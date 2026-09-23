@@ -1,0 +1,57 @@
+version: '3.9'
+
+services:
+  # ── PostgreSQL Database ───────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: observatorio-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-observatorio}
+      POSTGRES_USER: ${POSTGRES_USER:-observatorio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-observatorio123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5433}:5432"   # expose on 5433 to avoid conflict with local postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-observatorio} -d ${POSTGRES_DB:-observatorio}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Application (Frontend + Backend + Worker in one container) ─────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: observatorio-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-observatorio}:${POSTGRES_PASSWORD:-observatorio123}@db:5432/${POSTGRES_DB:-observatorio}
+      DB_HOST: db
+      DB_PORT: 5432
+      LOG_LEVEL: info
+      CORS_ORIGIN: "*"
+    ports:
+      - "${APP_PORT:-3000}:3001"
+    volumes:
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 45s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local
