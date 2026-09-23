@@ -15,7 +15,6 @@ api.interceptors.response.use(
   }
 );
 
-// ── Municipalities ────────────────────────────────────────────────────────────
 export const getMunicipalities = (params?: Record<string, string>) =>
   api.get('/municipalities', { params }).then((r) => r.data);
 
@@ -31,7 +30,6 @@ export const createMunicipality = (data: Record<string, unknown>) =>
 export const detectPortal = (id: string) =>
   api.post(`/municipalities/${id}/detect`).then((r) => r.data);
 
-// ── Procurements ──────────────────────────────────────────────────────────────
 export const getProcurements = (params?: Record<string, string>) =>
   api.get('/procurements', { params }).then((r) => r.data);
 
@@ -44,7 +42,6 @@ export const getProcurementModalities = (params?: Record<string, string>) =>
 export const getProcurementMonthly = (params?: Record<string, string>) =>
   api.get('/procurements/stats/monthly', { params }).then((r) => r.data);
 
-// ── Contracts ─────────────────────────────────────────────────────────────────
 export const getContracts = (params?: Record<string, string>) =>
   api.get('/contracts', { params }).then((r) => r.data);
 
@@ -54,7 +51,6 @@ export const getContract = (id: string) =>
 export const getContractAmendments = (params?: Record<string, string>) =>
   api.get('/contracts/stats/amendments', { params }).then((r) => r.data);
 
-// ── Suppliers ─────────────────────────────────────────────────────────────────
 export const getSuppliers = (params?: Record<string, string>) =>
   api.get('/suppliers', { params }).then((r) => r.data);
 
@@ -64,11 +60,9 @@ export const getSupplier = (id: string) =>
 export const getSupplierRanking = (municipalityId: string) =>
   api.get(`/suppliers/ranking/${municipalityId}`).then((r) => r.data);
 
-// ── Payments ──────────────────────────────────────────────────────────────────
 export const getPayments = (params?: Record<string, string>) =>
   api.get('/payments', { params }).then((r) => r.data);
 
-// ── Findings ──────────────────────────────────────────────────────────────────
 export const getFindings = (params?: Record<string, string>) =>
   api.get('/findings', { params }).then((r) => r.data);
 
@@ -78,7 +72,6 @@ export const getFindingsSummary = (params?: Record<string, string>) =>
 export const dismissFinding = (id: string) =>
   api.patch(`/findings/${id}/dismiss`).then((r) => r.data);
 
-// ── Analytics ─────────────────────────────────────────────────────────────────
 export const getAnalyticsOverview = (params?: Record<string, string>) =>
   api.get('/analytics/overview', { params }).then((r) => r.data);
 
@@ -94,7 +87,6 @@ export const runAnalysis = (municipalityId: string) =>
 export const getComparison = (ids: string[]) =>
   api.get('/analytics/compare', { params: { ids: ids.join(',') } }).then((r) => r.data);
 
-// ── Collections ───────────────────────────────────────────────────────────────
 export const getCollections = (params?: Record<string, string>) =>
   api.get('/collections', { params }).then((r) => r.data);
 
@@ -104,7 +96,6 @@ export const getCollection = (id: string) =>
 export const createCollection = (data: { municipalityId: string; year: number; months: number[] }) =>
   api.post('/collections', data).then((r) => r.data);
 
-// ── Imports ───────────────────────────────────────────────────────────────────
 export const getImports = (params?: Record<string, string>) =>
   api.get('/imports', { params }).then((r) => r.data);
 
@@ -131,7 +122,6 @@ export const executeImport = (
   return api.post('/imports', fd, { headers: { 'Content-Type': 'multipart/form-data' } }).then((r) => r.data);
 };
 
-// ── Exports ───────────────────────────────────────────────────────────────────
 export const exportProcurementsXLSX = (params: Record<string, string>) => {
   const qs = new URLSearchParams(params).toString();
   window.open(`/api/exports/procurements/xlsx?${qs}`, '_blank');
@@ -152,6 +142,5 @@ export const exportSuppliersXLSX = (params: Record<string, string>) => {
   window.open(`/api/exports/suppliers/xlsx?${qs}`, '_blank');
 };
 
-// ── Logs ──────────────────────────────────────────────────────────────────────
 export const getLogs = (params?: Record<string, string>) =>
   api.get('/logs', { params }).then((r) => r.data);

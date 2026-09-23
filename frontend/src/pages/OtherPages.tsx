@@ -14,7 +14,6 @@ import toast from 'react-hot-toast';
 
 const COLORS = ['#1e3a5f', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-// ── Analytics ────────────────────────────────────────────────────────────────
 export function Analytics() {
   const [municipalityId, setMunicipalityId] = useState('');
   const { data: municipalities } = useQuery({ queryKey: ['municipalities'], queryFn: () => getMunicipalities({ enabled: 'true' }) });
@@ -42,7 +41,7 @@ export function Analytics() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Supplier concentration chart */}
+        {}
         <div className="card p-5">
           <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-1">Concentração por Fornecedor</h3>
           <p className="text-xs text-gray-500 mb-4">% do valor contratado por fornecedor</p>
@@ -76,7 +75,7 @@ export function Analytics() {
           ) : <EmptyState icon={BarChart3} title="Sem dados de contratos" description="Inicie uma coleta para ver os dados" />}
         </div>
 
-        {/* Contract amendments */}
+        {}
         <div className="card p-5">
           <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-1">Contratos com Aditivos</h3>
           <p className="text-xs text-gray-500 mb-4">Contratos que sofreram alteração de valor</p>
@@ -106,7 +105,6 @@ export function Analytics() {
   );
 }
 
-// ── Comparison ───────────────────────────────────────────────────────────────
 export function Comparison() {
   const [selected, setSelected] = useState<string[]>([]);
   const { data: municipalities } = useQuery({ queryKey: ['municipalities'], queryFn: () => getMunicipalities({ enabled: 'true' }) });
@@ -189,7 +187,6 @@ export function Comparison() {
   );
 }
 
-// ── Imports ──────────────────────────────────────────────────────────────────
 export function Imports() {
   const [municipalityId, setMunicipalityId] = useState('');
   const [entityType, setEntityType] = useState('procurement');
@@ -311,7 +308,7 @@ export function Imports() {
         </div>
       </div>
 
-      {/* History */}
+      {}
       <div className="card overflow-hidden">
         <div className="px-4 py-3 border-b dark:border-gray-700 font-semibold text-sm text-gray-800 dark:text-gray-200">Histórico de Importações</div>
         {isLoading ? <LoadingPage /> : (
@@ -351,7 +348,6 @@ export function Imports() {
   );
 }
 
-// ── Reports ──────────────────────────────────────────────────────────────────
 export function Reports() {
   const [municipalityId, setMunicipalityId] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
@@ -411,7 +407,6 @@ export function Reports() {
   );
 }
 
-// ── Logs ─────────────────────────────────────────────────────────────────────
 export function Logs() {
   const [page, setPage] = useState(1);
   const [level, setLevel] = useState('');

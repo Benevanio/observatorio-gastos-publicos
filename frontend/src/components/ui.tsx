@@ -2,7 +2,6 @@ import { ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn, SEVERITY_LABELS, SEVERITY_COLORS, STATUS_COLORS, formatCurrency } from '../utils';
 
-// ── StatCard ───────────────────────────────────────────────────────────────
 export function StatCard({
   title, value, sub, icon: Icon, color = 'blue',
 }: {
@@ -36,7 +35,6 @@ export function StatCard({
   );
 }
 
-// ── Badge ─────────────────────────────────────────────────────────────────────
 export function SeverityBadge({ severity }: { severity: string }) {
   return (
     <span className={SEVERITY_COLORS[severity] || 'badge-gray'}>
@@ -50,7 +48,6 @@ export function StatusBadge({ status }: { status?: string | null }) {
   return <span className={STATUS_COLORS[status] || 'badge-gray'}>{status}</span>;
 }
 
-// ── Loading ───────────────────────────────────────────────────────────────────
 export function LoadingSpinner({ className }: { className?: string }) {
   return <Loader2 size={20} className={cn('animate-spin text-brand-600', className)} />;
 }
@@ -63,7 +60,6 @@ export function LoadingPage() {
   );
 }
 
-// ── Empty State ───────────────────────────────────────────────────────────────
 export function EmptyState({ icon: Icon, title, description, action }: {
   icon?: React.ComponentType<{ size?: number; className?: string }>;
   title: string; description?: string; action?: ReactNode;
@@ -78,7 +74,6 @@ export function EmptyState({ icon: Icon, title, description, action }: {
   );
 }
 
-// ── Pagination ────────────────────────────────────────────────────────────────
 export function Pagination({ page, pages, onChange }: { page: number; pages: number; onChange: (p: number) => void }) {
   if (pages <= 1) return null;
   return (
@@ -90,7 +85,6 @@ export function Pagination({ page, pages, onChange }: { page: number; pages: num
   );
 }
 
-// ── Page Header ───────────────────────────────────────────────────────────────
 export function PageHeader({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
   return (
     <div className="flex items-start justify-between mb-6">
@@ -103,7 +97,6 @@ export function PageHeader({ title, description, action }: { title: string; desc
   );
 }
 
-// ── Value change indicator ─────────────────────────────────────────────────────
 export function ValueChange({ initial, current }: { initial?: number; current?: number }) {
   if (!initial || !current) return <span className="text-gray-400">N/D</span>;
   const pct = ((current - initial) / initial) * 100;
@@ -115,7 +108,6 @@ export function ValueChange({ initial, current }: { initial?: number; current?: 
   );
 }
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
 export function Modal({ open, onClose, title, children }: {
   open: boolean; onClose: () => void; title: string; children: ReactNode;
 }) {
@@ -134,7 +126,6 @@ export function Modal({ open, onClose, title, children }: {
   );
 }
 
-// ── Evidence Panel ────────────────────────────────────────────────────────────
 export function EvidencePanel({ evidence }: { evidence?: Record<string, unknown> }) {
   if (!evidence) return null;
   return (
@@ -151,12 +142,10 @@ export function EvidencePanel({ evidence }: { evidence?: Record<string, unknown>
   );
 }
 
-// ── Currency display ──────────────────────────────────────────────────────────
 export function Currency({ value, className }: { value?: number | null; className?: string }) {
   return <span className={cn('font-mono tabular-nums', className)}>{formatCurrency(value)}</span>;
 }
 
-// ── Disclaimer banner ─────────────────────────────────────────────────────────
 export function Disclaimer() {
   return (
     <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-xs text-amber-800 dark:text-amber-300 flex gap-2">
@@ -170,7 +159,6 @@ export function Disclaimer() {
   );
 }
 
-// ── Progress bar ──────────────────────────────────────────────────────────────
 export function ProgressBar({ value, label, color = 'blue' }: { value: number; label?: string; color?: string }) {
   const colors: Record<string, string> = {
     blue: 'bg-blue-500', green: 'bg-green-500', orange: 'bg-orange-500', red: 'bg-red-500',

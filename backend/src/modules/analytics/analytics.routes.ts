@@ -3,7 +3,6 @@ import { prisma } from '../../database/prisma';
 import { TransparencyAnalyzer } from './transparency.analyzer';
 
 export async function analyticsRoutes(app: FastifyInstance) {
-  // Overview dashboard stats
   app.get('/overview', async (req, reply) => {
     const { municipalityId, year } = req.query as Record<string, string>;
 
@@ -40,7 +39,6 @@ export async function analyticsRoutes(app: FastifyInstance) {
           dismissed: false,
         },
       }),
-      // Unique suppliers in contracts
       prisma.contract.groupBy({
         by: ['supplierId'],
         where: {
@@ -48,7 +46,6 @@ export async function analyticsRoutes(app: FastifyInstance) {
           supplierId: { not: null },
         },
       }),
-      // Modality distribution
       prisma.procurement.groupBy({
         by: ['modality'],
         where: {
@@ -59,7 +56,6 @@ export async function analyticsRoutes(app: FastifyInstance) {
         _count: true,
         _sum: { awardedValue: true },
       }),
-      // Monthly procurements
       prisma.procurement.groupBy({
         by: ['month', 'year'],
         where: {
@@ -99,7 +95,6 @@ export async function analyticsRoutes(app: FastifyInstance) {
     });
   });
 
-  // Supplier concentration analysis
   app.get('/suppliers', async (req, reply) => {
     const { municipalityId } = req.query as Record<string, string>;
 
@@ -149,7 +144,6 @@ export async function analyticsRoutes(app: FastifyInstance) {
     return reply.send({ ranking, totalValue, totalContracts: contracts.length });
   });
 
-  // Contract amendment analysis
   app.get('/contracts', async (req, reply) => {
     const { municipalityId } = req.query as Record<string, string>;
 
@@ -183,7 +177,6 @@ export async function analyticsRoutes(app: FastifyInstance) {
     );
   });
 
-  // Run analysis and generate findings
   app.post('/run', async (req, reply) => {
     const { municipalityId } = req.body as { municipalityId: string };
 
@@ -206,7 +199,6 @@ export async function analyticsRoutes(app: FastifyInstance) {
     return reply.send({ findingsGenerated: findings.length, findings });
   });
 
-  // Comparison between municipalities
   app.get('/compare', async (req, reply) => {
     const { ids } = req.query as { ids?: string };
 

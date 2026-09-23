@@ -1,8 +1,8 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
-import staticFiles from '@fastify/static';
-import path from 'path';
+import { ZodError } from 'zod';
+import { env, corsOrigins } from './config/env';
 import { municipalitiesRoutes } from './modules/municipalities/municipalities.routes';
 import { procurementsRoutes } from './modules/procurements/procurements.routes';
 import { contractsRoutes } from './modules/contracts/contracts.routes';
@@ -14,43 +14,42 @@ import { collectionsRoutes } from './modules/collections/collections.routes';
 import { importsRoutes } from './modules/imports/imports.routes';
 import { exportsRoutes } from './modules/exports/exports.routes';
 import { logsRoutes } from './modules/logs/logs.routes';
+import { healthRoutes } from './modules/health/health.routes';
+import { diagnosticsRoutes } from './modules/diagnostics/diagnostics.routes';
 import { prisma } from './database/prisma';
+import { closeRedis, getRedis } from './lib/redis';
+import { PortalError } from './lib/portal/portal-error';
 import { CollectionWorker } from './modules/collections/collection.worker';
 
 const app = Fastify({
-  logger: {
-    level: process.env.LOG_LEVEL || 'info',
-  },
+  logger: { level: env.logLevel },
   maxParamLength: 200,
+  trustProxy: true,
 });
 
+let worker: CollectionWorker | null = null;
+
 async function bootstrap() {
+  if (!env.databaseUrl) {
+    throw new Error('DATABASE_URL não definida. Dentro do Docker use o host "db", não "localhost".');
+  }
+
+  if (env.isProduction && env.corsOrigin === '*') {
+    app.log.warn('CORS_ORIGIN="*" em produção. Defina a origem do frontend explicitamente.');
+  }
 
   await app.register(cors, {
-    origin: process.env.CORS_ORIGIN || true,
+    origin: corsOrigins(),
     credentials: true,
   });
 
   await app.register(multipart, {
-    limits: {
-      fileSize: 50 * 1024 * 1024, // 50MB
-    },
+    limits: { fileSize: 50 * 1024 * 1024 },
   });
-  const frontendPath = path.join(__dirname, '../../frontend/dist');
-  try {
-    await app.register(staticFiles, {
-      root: frontendPath,
-      prefix: '/',
-      decorateReply: false,
-    });
-  } catch {
-    app.log.info('Frontend static files not found, running in API-only mode');
-  }
 
-  // Health check
-  app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+  await app.register(healthRoutes);
+  await app.register(diagnosticsRoutes, { prefix: '/api/diagnostics' });
 
-  // API Routes
   await app.register(municipalitiesRoutes, { prefix: '/api/municipalities' });
   await app.register(procurementsRoutes, { prefix: '/api/procurements' });
   await app.register(contractsRoutes, { prefix: '/api/contracts' });
@@ -63,42 +62,74 @@ async function bootstrap() {
   await app.register(exportsRoutes, { prefix: '/api/exports' });
   await app.register(logsRoutes, { prefix: '/api/logs' });
 
-  // SPA fallback
-  app.setNotFoundHandler(async (request, reply) => {
-    if (request.url.startsWith('/api/')) {
-      return reply.status(404).send({ error: 'Not found' });
+  app.setNotFoundHandler(async (request, reply) =>
+    reply.status(404).send({
+      error: 'NOT_FOUND',
+      message: `Rota não encontrada: ${request.method} ${request.url}`,
+    })
+  );
+
+  app.setErrorHandler(async (error, request, reply) => {
+    if (error instanceof ZodError) {
+      return reply.status(400).send({
+        error: 'VALIDATION_ERROR',
+        message: 'Dados inválidos na requisição',
+        issues: error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+      });
     }
-    try {
-      return reply.sendFile('index.html', frontendPath);
-    } catch {
-      return reply.status(404).send({ error: 'Not found' });
+
+    if (error instanceof PortalError) {
+      request.log.warn({ portal: error.toJSON() }, 'Falha ao acessar portal');
+      return reply.status(502).send({
+        error: error.code,
+        message: error.message,
+        portal: error.portal,
+        endpoint: error.endpoint,
+        durationMs: Math.round(error.durationMs),
+        correlationId: error.correlationId,
+      });
     }
+
+    const status = error.statusCode && error.statusCode >= 400 ? error.statusCode : 500;
+    if (status >= 500) request.log.error({ err: error }, 'Erro não tratado');
+
+    return reply.status(status).send({
+      error: status >= 500 ? 'INTERNAL_ERROR' : 'REQUEST_ERROR',
+      message: status >= 500 && env.isProduction ? 'Erro interno no servidor' : error.message,
+    });
   });
 
-  // Start collection worker
-  const worker = new CollectionWorker();
-  worker.start();
+  getRedis();
 
-  const port = parseInt(process.env.PORT || '3001');
-  const host = process.env.HOST || '0.0.0.0';
+  if (env.collection.workerEnabled) {
+    worker = new CollectionWorker();
+    worker.start();
+  } else {
+    app.log.info('Collection worker desabilitado (COLLECTION_WORKER_ENABLED=false)');
+  }
 
-  await app.listen({ port, host });
-  app.log.info(`Server running at http://${host}:${port}`);
+  await app.listen({ port: env.port, host: env.host });
+  app.log.info(`API ouvindo em http://${env.host}:${env.port}`);
 }
 
-process.on('SIGTERM', async () => {
-  await app.close();
-  await prisma.$disconnect();
-  process.exit(0);
-});
+async function shutdown(signal: string) {
+  app.log.info(`${signal} recebido, encerrando...`);
+  try {
+    worker?.stop();
+    await app.close();
+    await prisma.$disconnect();
+    await closeRedis();
+    process.exit(0);
+  } catch (err) {
+    app.log.error({ err }, 'Falha no shutdown');
+    process.exit(1);
+  }
+}
 
-process.on('SIGINT', async () => {
-  await app.close();
-  await prisma.$disconnect();
-  process.exit(0);
-});
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
 
 bootstrap().catch((err) => {
-  console.error(err);
+  console.error('[BOOTSTRAP_ERROR]', err);
   process.exit(1);
 });

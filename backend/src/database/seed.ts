@@ -3,7 +3,6 @@ import { prisma } from './prisma';
 async function seed() {
   console.log('🌱 Seeding database...');
 
-  // Porto da Folha - SE
   const portoDaFolha = await prisma.municipality.upsert({
     where: { ibgeCode: '2805604' },
     update: {},
@@ -20,7 +19,6 @@ async function seed() {
 
   console.log(`✅ Municipality created: ${portoDaFolha.city}/${portoDaFolha.state} (IBGE: ${portoDaFolha.ibgeCode})`);
 
-  // Aracaju - SE (example)
   const aracaju = await prisma.municipality.upsert({
     where: { ibgeCode: '2800308' },
     update: {},
@@ -35,7 +33,6 @@ async function seed() {
 
   console.log(`✅ Municipality created: ${aracaju.city}/${aracaju.state}`);
 
-  // Nossa Senhora do Socorro - SE
   const socorro = await prisma.municipality.upsert({
     where: { ibgeCode: '2804805' },
     update: {},
@@ -50,14 +47,12 @@ async function seed() {
 
   console.log(`✅ Municipality created: ${socorro.city}/${socorro.state}`);
 
-  // Create sample data for Porto da Folha
   await createSampleData(portoDaFolha.id);
 
   console.log('✅ Database seeded successfully!');
 }
 
 async function createSampleData(municipalityId: string) {
-  // Sample suppliers
   const suppliers = await Promise.all([
     prisma.supplier.upsert({
       where: { document: '12.345.678/0001-90' },
@@ -103,7 +98,6 @@ async function createSampleData(municipalityId: string) {
 
   console.log(`✅ Created ${suppliers.length} sample suppliers`);
 
-  // Sample procurements
   const procurements = [
     {
       municipalityId,
@@ -320,7 +314,6 @@ async function createSampleData(municipalityId: string) {
 
   console.log(`✅ Created ${procurements.length} sample procurements`);
 
-  // Sample contracts
   const contracts = [
     {
       municipalityId,
@@ -404,7 +397,6 @@ async function createSampleData(municipalityId: string) {
 
   console.log(`✅ Created ${contracts.length} sample contracts`);
 
-  // Contract amendments (for concentration analysis)
   const savedContracts = await prisma.contract.findMany({
     where: { municipalityId },
     take: 3,
@@ -438,7 +430,6 @@ async function createSampleData(municipalityId: string) {
     console.log(`✅ Created ${amendments.length} contract amendments`);
   }
 
-  // Sample payments
   const savedContractsList = await prisma.contract.findMany({ where: { municipalityId } });
   if (savedContractsList.length > 0) {
     const payments = [

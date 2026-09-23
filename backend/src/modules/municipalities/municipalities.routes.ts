@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../../database/prisma';
+import { diagnosePortal } from '../../lib/portal/portal-diagnostics';
 
 const createSchema = z.object({
   state: z.string().length(2),
@@ -16,7 +17,6 @@ const createSchema = z.object({
 const updateSchema = createSchema.partial();
 
 export async function municipalitiesRoutes(app: FastifyInstance) {
-  // List all municipalities
   app.get('/', async (req, reply) => {
     const { state, enabled } = req.query as {
       state?: string;
@@ -45,7 +45,6 @@ export async function municipalitiesRoutes(app: FastifyInstance) {
     return reply.send(municipalities);
   });
 
-  // Get single municipality
   app.get('/:id', async (req, reply) => {
     const { id } = req.params as {
       id: string;
@@ -81,7 +80,6 @@ export async function municipalitiesRoutes(app: FastifyInstance) {
     return reply.send(municipality);
   });
 
-  // Create municipality
   app.post('/', async (req, reply) => {
     const parsed = createSchema.parse(req.body);
 
@@ -113,7 +111,6 @@ export async function municipalitiesRoutes(app: FastifyInstance) {
     return reply.status(201).send(municipality);
   });
 
-  // Update municipality
   app.put('/:id', async (req, reply) => {
     const { id } = req.params as {
       id: string;
@@ -153,7 +150,6 @@ export async function municipalitiesRoutes(app: FastifyInstance) {
     return reply.send(municipality);
   });
 
-  // Delete municipality
   app.delete('/:id', async (req, reply) => {
     const { id } = req.params as {
       id: string;
@@ -168,7 +164,6 @@ export async function municipalitiesRoutes(app: FastifyInstance) {
     });
   });
 
-  // Detect portal capabilities
   app.post('/:id/detect', async (req, reply) => {
     const { id } = req.params as {
       id: string;
@@ -184,14 +179,20 @@ export async function municipalitiesRoutes(app: FastifyInstance) {
       });
     }
 
-    const capabilities = await detectPortalCapabilities(
-      municipality,
-    );
+    if (!municipality.transparencyPortalUrl) {
+      return reply.status(400).send({
+        error: 'PORTAL_NOT_CONFIGURED',
+        message: `${municipality.city}/${municipality.state} não possui transparencyPortalUrl cadastrada`,
+      });
+    }
 
-    return reply.send(capabilities);
+    const capabilities = await detectPortalCapabilities(municipality);
+
+    return reply
+      .status(capabilities.connectivity.reachable ? 200 : 502)
+      .send(capabilities);
   });
 
-  // Get municipality stats
   app.get('/:id/stats', async (req, reply) => {
     const { id } = req.params as {
       id: string;
@@ -284,41 +285,51 @@ async function detectPortalCapabilities(municipality: {
   city: string;
 }) {
   const url = municipality.transparencyPortalUrl || '';
+  const connectivity = await diagnosePortal(url);
 
   const capabilities = {
     hasApi: false,
     hasScraping: false,
     hasExport: false,
     adapterType: 'generic',
+    connectivity: {
+      reachable: connectivity.reachable,
+      errorCode: connectivity.errorCode,
+      errorMessage: connectivity.errorMessage,
+      dnsMs: connectivity.phases.dns.durationMs,
+      tcpMs: connectivity.phases.tcp.durationMs,
+      tlsMs: connectivity.phases.tls?.durationMs,
+      httpMs: connectivity.phases.http.durationMs,
+      totalMs: connectivity.totalDurationMs,
+      httpDetail: connectivity.phases.http.detail,
+      checkedAt: connectivity.checkedAt,
+    },
     details: {} as Record<string, unknown>,
   };
 
+  if (!connectivity.reachable) {
+    capabilities.details = {
+      note: 'Detecção de capacidades não executada: o portal não respondeu.',
+    };
+    return capabilities;
+  }
+
   if (url.includes('portodafolha.se.gov.br')) {
-    capabilities.hasApi = true;
     capabilities.hasScraping = true;
     capabilities.hasExport = true;
     capabilities.adapterType = 'porto_da_folha';
-
     capabilities.details = {
       portalSystem: 'Sistema Municipal de Transparência',
       endpoints: [
-        {
-          type: 'procurements',
-          path: '/portal/licitacoes',
-        },
-        {
-          type: 'contracts',
-          path: '/portal/contratos',
-        },
+        { type: 'procurements', path: '/portal/licitacoes' },
+        { type: 'contracts', path: '/portal/contratos' },
       ],
-      exportFormats: ['html', 'csv'],
+      exportFormats: ['html'],
       rateLimitRps: 1,
     };
   } else if (url.includes('.gov.br')) {
     capabilities.hasScraping = true;
-    capabilities.hasExport = true;
     capabilities.adapterType = 'generic_municipal';
-
     capabilities.details = {
       portalSystem: 'Portal Municipal Genérico',
       note: 'Adaptador genérico. Pode requerer configuração manual.',

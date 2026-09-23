@@ -75,7 +75,6 @@ export async function procurementsRoutes(app: FastifyInstance) {
     return reply.send(procurement);
   });
 
-  // Modalities summary
   app.get('/stats/modalities', async (req, reply) => {
     const { municipalityId, year } = req.query as Record<string, string>;
 
@@ -94,7 +93,6 @@ export async function procurementsRoutes(app: FastifyInstance) {
     return reply.send(items);
   });
 
-  // Monthly distribution
   app.get('/stats/monthly', async (req, reply) => {
     const { municipalityId, year } = req.query as Record<string, string>;
 

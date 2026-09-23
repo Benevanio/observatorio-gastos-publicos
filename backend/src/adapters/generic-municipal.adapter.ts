@@ -4,7 +4,7 @@ export class GenericMunicipalAdapter implements PortalAdapter {
   name = 'GenericMunicipalAdapter';
 
   canHandle(_url: string): boolean {
-    return true; // Fallback adapter
+    return true;
   }
 
   async discover(): Promise<PortalCapabilities> {

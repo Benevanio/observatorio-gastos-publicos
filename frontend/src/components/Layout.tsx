@@ -35,7 +35,7 @@ export function Layout() {
 
   return (
     <div className={cn('min-h-screen flex', dark && 'dark')}>
-      {/* Mobile overlay */}
+      {}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-20 lg:hidden"
@@ -43,14 +43,14 @@ export function Layout() {
         />
       )}
 
-      {/* Sidebar */}
+      {}
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        {/* Logo */}
+        {}
         <div className="flex items-center gap-2 px-4 py-4 border-b border-gray-200 dark:border-gray-800">
           <div className="w-8 h-8 bg-brand-800 rounded-lg flex items-center justify-center">
             <BarChart3 size={16} className="text-white" />
@@ -64,7 +64,7 @@ export function Layout() {
           </button>
         </div>
 
-        {/* Navigation */}
+        {}
         <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
           {navItems.map(({ to, icon: Icon, label, end }) => (
             <NavLink
@@ -80,7 +80,7 @@ export function Layout() {
           ))}
         </nav>
 
-        {/* Footer */}
+        {}
         <div className="p-3 border-t border-gray-200 dark:border-gray-800">
           <div className="text-xs text-gray-400 dark:text-gray-500 text-center">
             v1.0.0 · Dados públicos
@@ -88,9 +88,9 @@ export function Layout() {
         </div>
       </aside>
 
-      {/* Main content */}
+      {}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
+        {}
         <header className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 h-14 flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -99,7 +99,7 @@ export function Layout() {
             <Menu size={20} className="text-gray-600 dark:text-gray-400" />
           </button>
 
-          {/* Search */}
+          {}
           <div className="flex-1 max-w-md">
             <div className="relative">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -127,7 +127,7 @@ export function Layout() {
           </div>
         </header>
 
-        {/* Page content */}
+        {}
         <main className="flex-1 overflow-auto p-4 md:p-6">
           <Outlet />
         </main>

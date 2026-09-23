@@ -24,7 +24,7 @@ export function Collections() {
   const { data, isLoading } = useQuery({
     queryKey: ['collections', page],
     queryFn: () => getCollections({ page: String(page), limit: '20' }),
-    refetchInterval: 5000, // Poll every 5s for running jobs
+    refetchInterval: 5000,
   });
 
   const { data: detail } = useQuery({
@@ -126,7 +126,7 @@ export function Collections() {
       )}
       <Pagination page={page} pages={data?.pages || 1} onChange={setPage} />
 
-      {/* Create Modal */}
+      {}
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nova Coleta de Dados">
         <form onSubmit={(e) => { e.preventDefault(); createMut.mutate(form); }} className="space-y-4">
           <div>
@@ -174,7 +174,7 @@ export function Collections() {
         </form>
       </Modal>
 
-      {/* Log detail modal */}
+      {}
       <Modal open={!!selectedId} onClose={() => setSelectedId(null)} title="Detalhes da Coleta">
         {detail && (
           <div className="space-y-4">

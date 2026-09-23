@@ -1,7 +1,4 @@
-version: '3.9'
-
 services:
-  # ── PostgreSQL Database ───────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
     container_name: observatorio-db
@@ -10,48 +7,140 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-observatorio}
       POSTGRES_USER: ${POSTGRES_USER:-observatorio}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-observatorio123}
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "${DB_PORT:-5433}:5432"   # expose on 5433 to avoid conflict with local postgres
+      - "${DB_PORT:-5433}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-observatorio} -d ${POSTGRES_DB:-observatorio}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 20s
+    networks:
+      - observatorio
 
-  # ── Application (Frontend + Backend + Worker in one container) ─────────────
-  app:
+  redis:
+    image: redis:7-alpine
+    container_name: observatorio-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - observatorio
+
+  backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
-    container_name: observatorio-app
+    container_name: observatorio-backend
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
-      NODE_ENV: production
-      PORT: 3001
+      NODE_ENV: ${NODE_ENV:-production}
       HOST: 0.0.0.0
-      DATABASE_URL: postgresql://${POSTGRES_USER:-observatorio}:${POSTGRES_PASSWORD:-observatorio123}@db:5432/${POSTGRES_DB:-observatorio}
+      PORT: 3001
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-observatorio}:${POSTGRES_PASSWORD:-observatorio123}@db:5432/${POSTGRES_DB:-observatorio}?connection_limit=10&pool_timeout=20
       DB_HOST: db
       DB_PORT: 5432
-      LOG_LEVEL: info
-      CORS_ORIGIN: "*"
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      RUN_SEED: ${RUN_SEED:-true}
+      PORTAL_REQUEST_TIMEOUT_MS: ${PORTAL_REQUEST_TIMEOUT_MS:-30000}
+      PORTAL_CONNECT_TIMEOUT_MS: ${PORTAL_CONNECT_TIMEOUT_MS:-10000}
+      PORTAL_MAX_RETRIES: ${PORTAL_MAX_RETRIES:-3}
+      PORTAL_RETRY_BASE_DELAY_MS: ${PORTAL_RETRY_BASE_DELAY_MS:-1000}
+      PORTAL_RETRY_MAX_DELAY_MS: ${PORTAL_RETRY_MAX_DELAY_MS:-15000}
+      PORTAL_MAX_CONCURRENCY: ${PORTAL_MAX_CONCURRENCY:-2}
+      PORTAL_MIN_INTERVAL_MS: ${PORTAL_MIN_INTERVAL_MS:-1000}
+      COLLECTION_CONCURRENCY: ${COLLECTION_CONCURRENCY:-2}
+      COLLECTION_WORKER_ENABLED: ${COLLECTION_WORKER_ENABLED:-true}
     ports:
-      - "${APP_PORT:-3000}:3001"
+      - "${BACKEND_PORT:-3001}:3001"
     volumes:
       - uploads_data:/app/uploads
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - observatorio
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: observatorio-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_HOST: backend
+      BACKEND_PORT: 3001
+    ports:
+      - "${FRONTEND_PORT:-3000}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
       interval: 15s
       timeout: 5s
-      start_period: 45s
       retries: 5
+      start_period: 15s
+    networks:
+      - observatorio
+
+  deps:
+    profiles: ["setup"]
+    image: node:20-alpine
+    container_name: observatorio-deps
+    working_dir: /workspace
+    environment:
+      PRISMA_SKIP_POSTINSTALL_GENERATE: "0"
+    volumes:
+      - ./backend:/workspace/backend
+      - ./frontend:/workspace/frontend
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        apk add --no-cache openssl
+        echo "[deps] backend"
+        cd /workspace/backend && npm ci --legacy-peer-deps && npx prisma generate
+        echo "[deps] frontend"
+        cd /workspace/frontend && npm ci
+        echo "[deps] concluido"
+    networks:
+      - observatorio
+
+networks:
+  observatorio:
+    driver: bridge
 
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
     driver: local
   uploads_data:
     driver: local

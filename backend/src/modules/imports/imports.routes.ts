@@ -6,7 +6,6 @@ import fs from 'fs';
 import os from 'os';
 
 export async function importsRoutes(app: FastifyInstance) {
-  // Upload and preview file
   app.post('/preview', async (req, reply) => {
     const data = await req.file();
     if (!data) return reply.status(400).send({ error: 'No file uploaded' });
@@ -26,7 +25,6 @@ export async function importsRoutes(app: FastifyInstance) {
     }
   });
 
-  // List imports
   app.get('/', async (req, reply) => {
     const { municipalityId, page = '1', limit = '20' } = req.query as Record<string, string>;
 
@@ -46,12 +44,10 @@ export async function importsRoutes(app: FastifyInstance) {
     return reply.send({ items, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
   });
 
-  // Execute import
   app.post('/', async (req, reply) => {
     const data = await req.file();
     if (!data) return reply.status(400).send({ error: 'No file uploaded' });
 
-    // Get fields from form
     const fields = (data as unknown as { fields: Record<string, { value: string }> }).fields;
     const municipalityId = fields?.municipalityId?.value;
     const entityType = fields?.entityType?.value || 'procurement';
@@ -68,7 +64,6 @@ export async function importsRoutes(app: FastifyInstance) {
     const buffer = await data.toBuffer();
     fs.writeFileSync(tmpFile, buffer);
 
-    // Create import record
     const importRecord = await prisma.dataImport.create({
       data: {
         municipalityId,
@@ -81,7 +76,6 @@ export async function importsRoutes(app: FastifyInstance) {
       },
     });
 
-    // Process in background
     setImmediate(async () => {
       const service = new ImportService();
       try {
@@ -120,7 +114,7 @@ export async function importsRoutes(app: FastifyInstance) {
           data: { status: 'error', errorMessage: msg, filename: data.filename },
         });
       } finally {
-        try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
+        try { fs.unlinkSync(tmpFile); } catch {  }
       }
     });
 

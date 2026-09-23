@@ -1,4 +1,3 @@
-
 import { Prisma, PrismaClient } from '@prisma/client';
 
 export interface Finding {
@@ -20,14 +19,12 @@ export class TransparencyAnalyzer {
   constructor(private prisma: PrismaClient) {}
 
   async analyze(municipalityId: string): Promise<Finding[]> {
-    // Clear existing non-dismissed findings
     await this.prisma.analysisFinding.deleteMany({
       where: { municipalityId, dismissed: false },
     });
 
     const findings: Finding[] = [];
 
-    // Run all analysis rules
     const results = await Promise.all([
       this.analyzeSupplierConcentration(municipalityId),
       this.analyzeExcessiveAmendments(municipalityId),
@@ -43,7 +40,6 @@ export class TransparencyAnalyzer {
       findings.push(...result);
     }
 
-    // Save all findings
     for (const finding of findings) {
       await this.prisma.analysisFinding.create({
         data: {
@@ -65,10 +61,6 @@ export class TransparencyAnalyzer {
     return findings;
   }
 
-  /**
-   * Rule 1: Supplier Concentration
-   * Identifies suppliers that represent a large share of contracted value.
-   */
   private async analyzeSupplierConcentration(
     municipalityId: string,
   ): Promise<Finding[]> {
@@ -177,10 +169,6 @@ export class TransparencyAnalyzer {
     return findings;
   }
 
-  /**
-   * Rule 2: Excessive Contract Amendments
-   * Flags contracts with high amendment rates.
-   */
   private async analyzeExcessiveAmendments(
     municipalityId: string,
   ): Promise<Finding[]> {
@@ -282,9 +270,6 @@ export class TransparencyAnalyzer {
     return findings;
   }
 
-  /**
-   * Rule 3: Inexigibilidade analysis.
-   */
   private async analyzeInexigibilidades(
     municipalityId: string,
   ): Promise<Finding[]> {
@@ -344,9 +329,6 @@ export class TransparencyAnalyzer {
     return findings;
   }
 
-  /**
-   * Rule 4: Dispensa analysis.
-   */
   private async analyzeDispensas(
     municipalityId: string,
   ): Promise<Finding[]> {
@@ -371,7 +353,6 @@ export class TransparencyAnalyzer {
       0,
     );
 
-    // Check for high frequency
     if (items.length >= 5) {
       findings.push({
         municipalityId,
@@ -405,7 +386,6 @@ export class TransparencyAnalyzer {
       });
     }
 
-    // Check for similar objects in same period
     const objects = items.map(
       (p) => p.object?.toLowerCase() || '',
     );
@@ -463,9 +443,6 @@ export class TransparencyAnalyzer {
     return findings;
   }
 
-  /**
-   * Rule 5: Expired contracts.
-   */
   private async analyzeExpiredContracts(
     municipalityId: string,
   ): Promise<Finding[]> {
@@ -518,7 +495,6 @@ export class TransparencyAnalyzer {
       });
     }
 
-    // Near-expiry contracts (next 30 days)
     const thirtyDaysFromNow = new Date(
       today.getTime() + 30 * 24 * 60 * 60 * 1000,
     );
@@ -565,9 +541,6 @@ export class TransparencyAnalyzer {
     return findings;
   }
 
-  /**
-   * Rule 6: Data quality issues.
-   */
   private async analyzeDataQuality(
     municipalityId: string,
   ): Promise<Finding[]> {
@@ -647,9 +620,6 @@ export class TransparencyAnalyzer {
     return findings;
   }
 
-  /**
-   * Rule 7: Repeated procurements with same object.
-   */
   private async analyzeRepeatedProcurements(
     municipalityId: string,
   ): Promise<Finding[]> {
@@ -672,7 +642,6 @@ export class TransparencyAnalyzer {
         },
       });
 
-    // Group by similar keywords
     const groups: Record<string, typeof procurements> = {};
 
     const keywords = [
@@ -736,9 +705,6 @@ export class TransparencyAnalyzer {
     return findings;
   }
 
-  /**
-   * Rule 8: Recurring suppliers.
-   */
   private async analyzeRecurringSuppliers(
     municipalityId: string,
   ): Promise<Finding[]> {

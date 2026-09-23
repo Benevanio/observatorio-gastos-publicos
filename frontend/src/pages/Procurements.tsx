@@ -44,7 +44,7 @@ export function Procurements() {
         }
       />
 
-      {/* Filters */}
+      {}
       <div className="card p-4 flex flex-wrap gap-3">
         <select value={municipalityId} onChange={(e) => { setMunicipalityId(e.target.value); setPage(1); }} className="input w-48">
           <option value="">Todos municípios</option>

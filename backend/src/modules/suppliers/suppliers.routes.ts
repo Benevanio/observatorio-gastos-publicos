@@ -69,7 +69,6 @@ export async function suppliersRoutes(app: FastifyInstance) {
 
     if (!supplier) return reply.status(404).send({ error: 'Not found' });
 
-    // Calculate totals
     const totalContracts = supplier.contracts.reduce(
       (sum, c) => sum + Number(c.currentValue || c.initialValue || 0),
       0
@@ -83,7 +82,6 @@ export async function suppliersRoutes(app: FastifyInstance) {
     });
   });
 
-  // Supplier ranking by municipality
   app.get('/ranking/:municipalityId', async (req, reply) => {
     const { municipalityId } = req.params as { municipalityId: string };
 

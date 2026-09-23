@@ -4,7 +4,6 @@ import * as ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 
 export async function exportsRoutes(app: FastifyInstance) {
-  // Export procurements as XLSX
   app.get('/procurements/xlsx', async (req, reply) => {
     const { municipalityId, year } = req.query as Record<string, string>;
 
@@ -45,7 +44,6 @@ export async function exportsRoutes(app: FastifyInstance) {
       { header: 'Fonte', key: 'sourceUrl', width: 50 },
     ];
 
-    // Style header
     const headerRow = sheet.getRow(1);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
@@ -71,12 +69,10 @@ export async function exportsRoutes(app: FastifyInstance) {
       });
     }
 
-    // Format currency columns
     ['K', 'L'].forEach((col) => {
       sheet.getColumn(col).numFmt = '#,##0.00';
     });
 
-    // Add disclaimer
     const disclaimerSheet = workbook.addWorksheet('Aviso Importante');
     disclaimerSheet.getCell('A1').value = 'AVISO IMPORTANTE';
     disclaimerSheet.getCell('A1').font = { bold: true, size: 14 };
@@ -98,7 +94,6 @@ export async function exportsRoutes(app: FastifyInstance) {
       .send(Buffer.from(buffer));
   });
 
-  // Export procurements as CSV
   app.get('/procurements/csv', async (req, reply) => {
     const { municipalityId, year } = req.query as Record<string, string>;
 
@@ -142,10 +137,9 @@ export async function exportsRoutes(app: FastifyInstance) {
     reply
       .header('Content-Type', 'text/csv; charset=utf-8')
       .header('Content-Disposition', `attachment; filename="licitacoes-${year || 'todos'}.csv"`)
-      .send('\uFEFF' + csv); // BOM for Excel
+      .send('\uFEFF' + csv);
   });
 
-  // Export findings as PDF report
   app.get('/report/pdf', async (req, reply) => {
     const { municipalityId, year } = req.query as Record<string, string>;
 
@@ -174,12 +168,10 @@ export async function exportsRoutes(app: FastifyInstance) {
     const chunks: Buffer[] = [];
     doc.on('data', (chunk) => chunks.push(chunk));
 
-    // Title
     doc.fontSize(20).fillColor('#1e3a5f').text('OBSERVATÓRIO DE GASTOS PÚBLICOS', { align: 'center' });
     doc.fontSize(14).fillColor('#444').text('Relatório de Análise de Transparência', { align: 'center' });
     doc.moveDown();
 
-    // Municipality info
     if (municipality) {
       doc.fontSize(12).fillColor('#1e3a5f').font('Helvetica-Bold').text(`Município: ${municipality.city}/${municipality.state}`).font('Helvetica');
     }
@@ -190,7 +182,6 @@ export async function exportsRoutes(app: FastifyInstance) {
     doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#1e3a5f');
     doc.moveDown();
 
-    // DISCLAIMER
     doc.rect(50, doc.y, 495, 60).fill('#fff3cd');
     const disclaimerY = doc.y + 8;
     doc.fontSize(9).fillColor('#7d6608')
@@ -204,7 +195,6 @@ export async function exportsRoutes(app: FastifyInstance) {
       );
     doc.moveDown(4);
 
-    // Summary
     doc.fontSize(14).fillColor('#1e3a5f').text('1. RESUMO EXECUTIVO');
     doc.moveDown(0.5);
     doc.fontSize(10).fillColor('#333');
@@ -216,7 +206,6 @@ export async function exportsRoutes(app: FastifyInstance) {
 
     doc.moveDown();
 
-    // Findings
     doc.fontSize(14).fillColor('#1e3a5f').text('2. INDICADORES IDENTIFICADOS');
     doc.moveDown(0.5);
 
@@ -250,7 +239,6 @@ export async function exportsRoutes(app: FastifyInstance) {
       doc.moveDown(0.5);
     }
 
-    // Methodology
     doc.addPage();
     doc.fontSize(14).fillColor('#1e3a5f').text('3. METODOLOGIA');
     doc.moveDown(0.5);
@@ -280,7 +268,6 @@ export async function exportsRoutes(app: FastifyInstance) {
       .send(pdfBuffer);
   });
 
-  // Export suppliers ranking as XLSX
   app.get('/suppliers/xlsx', async (req, reply) => {
     const { municipalityId } = req.query as Record<string, string>;
 

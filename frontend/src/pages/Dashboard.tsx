@@ -48,7 +48,7 @@ export function Dashboard() {
     <div className="space-y-6">
       <PageHeader title="Dashboard" description="Visão geral dos gastos públicos municipais" />
 
-      {/* Filters */}
+      {}
       <div className="card p-4 flex flex-wrap gap-3 items-end">
         <div>
           <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Município</label>
@@ -79,7 +79,7 @@ export function Dashboard() {
 
       {isLoading ? <LoadingPage /> : (
         <>
-          {/* Stats grid */}
+          {}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <StatCard title="Total Analisado" value={fmtShort(s?.totalAnalyzed || 0)} icon={TrendingUp} color="blue" />
             <StatCard title="Licitações" value={s?.procurements || 0} icon={FileText} color="purple" />
@@ -90,7 +90,7 @@ export function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Monthly chart */}
+            {}
             <div className="card p-5">
               <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-4">Licitações por Mês</h3>
               {(overview?.monthlyProcurements?.length ?? 0) > 0 ? (
@@ -108,7 +108,7 @@ export function Dashboard() {
               )}
             </div>
 
-            {/* Modality pie */}
+            {}
             <div className="card p-5">
               <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-4">Por Modalidade</h3>
               {(overview?.modalityDistribution?.length ?? 0) > 0 ? (
@@ -133,7 +133,7 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Financial summary */}
+          {}
           {s && (
             <div className="card p-5">
               <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">Resumo Financeiro</h3>

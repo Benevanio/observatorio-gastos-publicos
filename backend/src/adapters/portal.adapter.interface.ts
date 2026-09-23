@@ -6,12 +6,23 @@ export interface PortalCapabilities {
   exportFormats: string[];
   endpoints: Array<{ type: string; url: string }>;
   rateLimit: { requestsPerSecond: number; delayMs: number };
+  reachable?: boolean;
+  diagnostics?: {
+    dnsMs?: number;
+    tcpMs?: number;
+    tlsMs?: number;
+    httpMs?: number;
+    totalMs?: number;
+    errorCode?: string;
+  };
   notes?: string;
 }
 
 export interface CollectionOptions {
   year: number;
   months: number[];
+  correlationId?: string;
+  signal?: AbortSignal;
 }
 
 export interface PortalAdapter {

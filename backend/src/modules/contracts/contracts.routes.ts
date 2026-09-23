@@ -80,7 +80,6 @@ export async function contractsRoutes(app: FastifyInstance) {
     return reply.send(contract);
   });
 
-  // Contracts with high amendment rate
   app.get('/stats/amendments', async (req, reply) => {
     const { municipalityId } = req.query as Record<string, string>;
 

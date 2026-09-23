@@ -1,887 +1,624 @@
 # Observatório de Gastos Públicos
 
-Plataforma open-source para **coleta, organização, cruzamento e análise de dados públicos** provenientes de Portais da Transparência de municípios brasileiros.
-
-O projeto busca facilitar a exploração de dados públicos, permitindo identificar **padrões, indícios, anomalias e inconsistências** em despesas, licitações, contratos, fornecedores e pagamentos.
-
-> ⚠️ **Aviso importante**
->
-> O sistema identifica **indícios, padrões, anomalias e inconsistências para análise**. Ele **não acusa automaticamente corrupção, fraude ou ilegalidade**.
->
-> A interpretação dos resultados é responsabilidade do usuário. Cada indicador deve apresentar sua metodologia, os dados utilizados e, sempre que possível, a fonte original.
+Plataforma de coleta, consolidação e análise de gastos públicos municipais brasileiros. Coleta dados de Portais da Transparência, normaliza em um banco relacional e gera indicadores que apontam situações que **merecem análise documental** — nunca afirmações de irregularidade.
 
 ---
 
-## Funcionalidades
+## Comando único
 
-| Módulo           | Descrição                                                               |
-| ---------------- | ----------------------------------------------------------------------- |
-| **Dashboard**    | Visão geral com gráficos de gastos por período, modalidade e fornecedor |
-| **Municípios**   | Cadastro e gerenciamento dos municípios monitorados                     |
-| **Coletas**      | Jobs automáticos de coleta com acompanhamento de progresso              |
-| **Licitações**   | Listagem, filtros e exportação de processos licitatórios                |
-| **Contratos**    | Contratos, aditivos e variações de valores                              |
-| **Fornecedores** | Ranking e histórico por fornecedor/CNPJ                                 |
-| **Pagamentos**   | Registro de empenhos e pagamentos                                       |
-| **Análises**     | Análise de concentração de fornecedores, aditivos e outros indicadores  |
-| **Achados**      | Indicadores gerados automaticamente com evidências                      |
-| **Comparação**   | Comparação de indicadores entre municípios                              |
-| **Importação**   | Importação de arquivos XLSX/CSV com detecção de colunas                 |
-| **Relatórios**   | Exportação em PDF, XLSX e CSV                                           |
-| **Logs**         | Registro e auditoria das operações                                      |
-
----
-
-# Stack
-
-### Backend
-
-* Node.js 20+
-* TypeScript
-* Fastify
-* Prisma ORM
-* PostgreSQL
-* Zod
-* Bull
-* Redis
-* Axios
-* ExcelJS
-* PDFKit
-
-### Frontend
-
-* React
-* Vite
-* TypeScript
-* Tailwind CSS
-
-### Infraestrutura
-
-* Docker
-* Docker Compose
-* PostgreSQL 16
-* Redis
-* Nginx/reverse proxy opcional
-* SSH para administração remota
-
----
-
-# Início rápido com Docker
-
-## Pré-requisitos
-
-* Docker >= 24
-* Docker Compose >= 2.20
-* Git
-* SSH, caso o projeto seja executado em um servidor remoto
-
-Verifique:
+Pré-requisito: **Docker Desktop** (ou Docker Engine + plugin Compose) rodando. Nada mais — Node, npm, Postgres e Redis ficam todos dentro dos containers.
 
 ```bash
-docker --version
-docker compose version
-git --version
-ssh -V
+npm start
+```
+
+Esse comando faz tudo:
+
+1. Constrói a imagem do **backend** — `npm ci`, `prisma generate`, `tsc`.
+2. Constrói a imagem do **frontend** — `npm ci`, `vite build`, empacota no nginx.
+3. Sobe **PostgreSQL**, **Redis**, **backend** e **frontend** respeitando os healthchecks.
+4. Aplica as **migrations** (`prisma migrate deploy`) e roda o **seed** na primeira subida.
+5. Imprime o status dos containers.
+
+Depois disso:
+
+| Serviço | URL |
+|---|---|
+| Frontend | http://localhost:3000 |
+| API | http://localhost:3001 |
+| Health | http://localhost:3001/health |
+| PostgreSQL | `localhost:5433` |
+| Redis | `localhost:6379` |
+
+O `.env` já vem pronto no repositório (`.env.example` → copie para `.env` se ainda não existir). Para uso local não é preciso editar nada.
+
+```bash
+cp .env.example .env   # apenas se .env não existir
+npm start
 ```
 
 ---
 
-## Clonar o projeto
+## Todos os comandos
+
+Todos rodam a partir da raiz do projeto.
+
+### Ciclo de vida
+
+| Comando | O que faz |
+|---|---|
+| `npm start` | Constrói tudo e sobe. **É o comando principal.** |
+| `npm stop` | Para e remove os containers. **Os volumes são preservados.** |
+| `npm run restart` | Reinicia só backend e frontend (não toca no banco). |
+| `npm run rebuild` | Rebuild do zero (`--no-cache`) e recria os containers. |
+| `npm run status` | Status e saúde dos 4 containers. |
+
+### Logs
+
+| Comando | O que faz |
+|---|---|
+| `npm run logs` | Logs de todos os serviços. |
+| `npm run logs:backend` | Só o backend. |
+| `npm run logs:frontend` | Só o nginx do frontend. |
+| `npm run logs:db` | Só o PostgreSQL. |
+
+### Diagnóstico
+
+| Comando | O que faz |
+|---|---|
+| `npm run doctor` | Bateria completa: DNS + TCP para `db` e `redis`, `pg_isready`, `redis-cli ping`. |
+| `npm run health` | `GET /health` de dentro do container. |
+| `npm run shell:backend` | Shell dentro do backend. |
+| `npm run shell:db` | `psql` conectado ao banco. |
+
+### Banco
+
+| Comando | O que faz |
+|---|---|
+| `npm run db:migrate` | Aplica migrations pendentes. |
+| `npm run db:seed` | Roda o seed. |
+| `npm run db:studio` | Prisma Studio (precisa de Node no host). |
+
+### Desenvolvimento fora do Docker
+
+| Comando | O que faz |
+|---|---|
+| `npm run deps` | Instala `node_modules` do backend e do frontend **no host**, usando Node 20 de um container. |
+| `npm run dev` | Backend (`tsx watch`) + frontend (`vite`) em paralelo. |
+| `npm run build` | Compila os dois. |
+| `npm test` | Testes do backend (Jest). |
+| `npm run lint` | Lint dos dois. |
+
+Para desenvolver fora do Docker, suba só a infraestrutura e aponte o backend para as portas publicadas:
 
 ```bash
-git clone <URL_DO_REPOSITORIO>
-cd observatorio-gastos-publicos
-```
-
-Crie o arquivo de ambiente:
-
-```bash
-cp .env.example .env
-```
-
-Edite caso seja necessário:
-
-```bash
-nano .env
-```
-
-Os valores padrão foram definidos para permitir executar o projeto localmente sem configuração adicional.
-
----
-
-# Executando com Docker
-
-O projeto utiliza Docker Compose para executar a aplicação e o banco de dados de forma integrada.
-
-Suba os containers:
-
-```bash
-docker compose up --build
-```
-
-Para executar em segundo plano:
-
-```bash
-docker compose up -d --build
-```
-
-A aplicação ficará disponível em:
-
-```text
-http://localhost:3000
-```
-
-Health check:
-
-```text
-http://localhost:3000/health
-```
-
----
-
-## Arquitetura Docker
-
-A execução padrão possui:
-
-```text
-                    ┌─────────────────────────┐
-                    │      observatorio-app    │
-                    │                         │
-                    │  Frontend React/Vite    │
-                    │  Backend Fastify         │
-                    │  Prisma                  │
-                    │  Workers/Jobs            │
-                    └────────────┬────────────┘
-                                 │
-                                 │ PostgreSQL
-                                 ▼
-                    ┌─────────────────────────┐
-                    │    observatorio-db      │
-                    │    PostgreSQL 16        │
-                    └─────────────────────────┘
-```
-
-O frontend e o backend são compilados em uma **imagem Docker multi-stage**.
-
-O PostgreSQL utiliza um volume persistente:
-
-```text
-postgres_data
-```
-
-Portanto, reiniciar ou recriar os containers não apaga automaticamente os dados do banco.
-
----
-
-# Comandos Docker
-
-## Iniciar
-
-```bash
-docker compose up -d
-```
-
-## Iniciar reconstruindo a imagem
-
-Use quando houver alterações no código ou no Dockerfile:
-
-```bash
-docker compose up -d --build
-```
-
-## Parar
-
-```bash
-docker compose down
-```
-
-Isso remove os containers, mas **preserva os volumes**.
-
-## Parar e apagar os dados
-
-> ⚠️ Isso remove o volume do PostgreSQL e, consequentemente, os dados persistidos.
-
-```bash
-docker compose down -v
-```
-
-## Ver status
-
-```bash
-docker compose ps
-```
-
-## Ver logs da aplicação
-
-```bash
-docker compose logs -f app
-```
-
-## Ver logs do PostgreSQL
-
-```bash
-docker compose logs -f db
-```
-
-## Ver os últimos logs
-
-```bash
-docker compose logs --tail=100 app
-```
-
-## Reiniciar somente a aplicação
-
-```bash
-docker compose restart app
-```
-
-## Reiniciar o banco
-
-```bash
-docker compose restart db
-```
-
----
-
-# Migrations e Prisma
-
-As migrations são executadas automaticamente pelo `docker-entrypoint.sh` durante a inicialização da aplicação.
-
-O fluxo esperado é:
-
-```text
-Container iniciado
-      │
-      ▼
-Aguardar PostgreSQL
-      │
-      ▼
-Prisma migrate deploy
-      │
-      ▼
-Verificar dados iniciais
-      │
-      ▼
-Executar seed se necessário
-      │
-      ▼
-Iniciar Fastify
-```
-
-Para consultar o estado das migrations:
-
-```bash
-docker compose exec app sh
-```
-
-Dentro do container:
-
-```bash
-cd /app/backend
-npx prisma migrate status
-```
-
-Sair:
-
-```bash
-exit
-```
-
----
-
-## Gerar Prisma Client
-
-Durante o build Docker, o Prisma Client é gerado automaticamente.
-
-Manualmente:
-
-```bash
-docker compose exec app sh
-```
-
-```bash
-cd /app/backend
-npx prisma generate
-```
-
----
-
-# Banco de dados
-
-O PostgreSQL roda internamente no container utilizando:
-
-```text
-Host: db
-Port: 5432
-Database: observatorio
-User: observatorio
-```
-
-A aplicação utiliza internamente:
-
-```text
-postgresql://observatorio:observatorio123@db:5432/observatorio
-```
-
-> Esses valores podem ser alterados pelo `.env`.
-
-### Importante
-
-Dentro do Docker, o backend deve utilizar:
-
-```text
-db:5432
-```
-
-e não:
-
-```text
-localhost:5433
-```
-
-`localhost` dentro do container aponta para o próprio container, não para o PostgreSQL.
-
----
-
-# Persistência dos dados
-
-Os dados do PostgreSQL ficam armazenados no volume:
-
-```text
-postgres_data
-```
-
-Para listar os volumes:
-
-```bash
-docker volume ls
-```
-
-Para verificar os detalhes:
-
-```bash
-docker volume inspect observatorio-gastos-publicos_postgres_data
-```
-
-O nome exato do volume pode variar de acordo com o nome do projeto Docker Compose.
-
----
-
-# Backup do PostgreSQL
-
-Antes de operações destrutivas, recomenda-se realizar backup.
-
-Exemplo:
-
-```bash
-docker compose exec db \
-  pg_dump -U observatorio -d observatorio \
-  > backup.sql
-```
-
-Para restaurar:
-
-```bash
-cat backup.sql | docker compose exec -T db \
-  psql -U observatorio -d observatorio
-```
-
-> Nunca utilize `docker compose down -v` em um ambiente com dados importantes sem possuir um backup.
-
----
-
-# SSH — Acesso ao servidor
-
-O projeto pode ser executado em um servidor Linux através de SSH.
-
-Exemplo:
-
-```bash
-ssh usuario@IP_DO_SERVIDOR
-```
-
-Caso seja utilizada uma chave SSH:
-
-```bash
-ssh -i ~/.ssh/id_ed25519 usuario@IP_DO_SERVIDOR
-```
-
-Exemplo:
-
-```bash
-ssh -i ~/.ssh/id_ed25519 ubuntu@203.0.113.10
-```
-
-> Substitua o usuário, IP e caminho da chave pelos valores do seu servidor.
-
----
-
-## Configurando o projeto no servidor
-
-Após conectar:
-
-```bash
-cd /opt
-```
-
-Clone o projeto:
-
-```bash
-git clone <URL_DO_REPOSITORIO> observatorio-gastos-publicos
-```
-
-Entre no diretório:
-
-```bash
-cd /opt/observatorio-gastos-publicos
-```
-
-Configure o ambiente:
-
-```bash
-cp .env.example .env
-```
-
-Edite:
-
-```bash
-nano .env
-```
-
-Inicie:
-
-```bash
-docker compose up -d --build
-```
-
-Verifique:
-
-```bash
-docker compose ps
-```
-
-E acompanhe os logs:
-
-```bash
-docker compose logs -f app
-```
-
----
-
-# Atualizando a aplicação via SSH
-
-Fluxo recomendado:
-
-```bash
-ssh usuario@IP_DO_SERVIDOR
-```
-
-Depois:
-
-```bash
-cd /opt/observatorio-gastos-publicos
-```
-
-Atualize o código:
-
-```bash
-git pull
-```
-
-Reconstrua a aplicação:
-
-```bash
-docker compose up -d --build
-```
-
-Verifique:
-
-```bash
-docker compose ps
-```
-
-E:
-
-```bash
-docker compose logs --tail=100 app
-```
-
-### Atualização completa
-
-Quando for necessário reconstruir tudo:
-
-```bash
-docker compose down
-docker compose build --no-cache
-docker compose up -d
-```
-
-> O comando `docker compose down` não remove os volumes. Os dados do PostgreSQL permanecem.
-
----
-
-# Diagnóstico Docker
-
-## Container reiniciando continuamente
-
-Verifique:
-
-```bash
-docker compose ps
-```
-
-Depois:
-
-```bash
-docker compose logs --tail=200 app
-```
-
-Para verificar o motivo da saída:
-
-```bash
-docker inspect observatorio-app
-```
-
----
-
-## Verificar conectividade com PostgreSQL
-
-```bash
-docker compose exec app sh
-```
-
-Depois:
-
-```bash
-nc -zv db 5432
-```
-
-Resultado esperado:
-
-```text
-db (172.x.x.x:5432) open
-```
-
----
-
-## Verificar Prisma
-
-Dentro do container:
-
-```bash
-cd /app/backend
-npx prisma --version
-```
-
-A versão do Prisma CLI e do Prisma Client deve permanecer compatível com a versão definida no `package.json`.
-
----
-
-## Verificar OpenSSL
-
-O runtime Docker precisa possuir OpenSSL para o Prisma.
-
-```bash
-docker compose exec app openssl version
-```
-
----
-
-# Desenvolvimento local
-
-## Pré-requisitos
-
-* Node.js >= 20
-* npm
-* PostgreSQL >= 14
-* Git
-
----
-
-# Backend
-
-```bash
-cd backend
-npm install
-```
-
-Configure o ambiente:
-
-```bash
-cp ../.env.example ../.env
-```
-
-Ajuste o `DATABASE_URL` para o PostgreSQL local.
-
-Execute as migrations:
-
-```bash
-npx prisma migrate deploy
-```
-
-Ou, durante desenvolvimento:
-
-```bash
-npx prisma db push
-```
-
-Execute o seed:
-
-```bash
-npx tsx src/database/seed.ts
-```
-
-Inicie:
-
-```bash
+docker compose up -d db redis
+npm run deps
+# backend/.env
+# DATABASE_URL=postgresql://observatorio:observatorio123@localhost:5433/observatorio
+# REDIS_URL=redis://localhost:6379
 npm run dev
 ```
 
-Backend:
+---
 
-```text
-http://localhost:3001
+## Arquitetura
+
 ```
+                    navegador
+                        │
+        ┌───────────────┴───────────────┐
+        │ localhost:3000  localhost:3001│
+        ▼                               ▼
+┌────────────────────┐        ┌──────────────────────┐
+│     frontend       │        │                      │
+│  nginx :8080       │        │                      │
+│  ├── / → SPA React │        │                      │
+│  └── /api/* ───────┼───────▶│   backend            │
+└────────────────────┘        │   Fastify 0.0.0.0    │
+                              │   :3001              │
+                              │                      │
+                              │  ├── API REST        │
+                              │  ├── CollectionWorker│
+                              │  ├── PortalAdapters  │
+                              │  └── Analyzer        │
+                              └───┬──────────┬───────┘
+                                  │          │
+                      ┌───────────▼──┐   ┌───▼──────────┐
+                      │ db           │   │ redis        │
+                      │ postgres:16  │   │ redis:7      │
+                      │ :5432        │   │ :6379        │
+                      └──────────────┘   └──────────────┘
+                                  │
+                                  ▼
+                   Portais da Transparência (HTTP externo)
+```
+
+### Regras de comunicação
+
+- **Entre containers:** sempre pelo nome do serviço — `db:5432`, `redis:6379`, `backend:3001`. Nunca `localhost`.
+- **Do navegador/host:** `localhost:3000` e `localhost:3001`.
+- O frontend é um container próprio com nginx. **O Fastify não serve o SPA** e não conhece `frontend/dist`.
+- O nginx faz proxy de `/api/*` para `backend:3001`, então o frontend funciona com `baseURL: '/api'` — sem URL de API embutida no bundle.
+
+### Containers
+
+| Serviço | Imagem | Porta interna | Porta no host | Healthcheck |
+|---|---|---|---|---|
+| `db` | postgres:16-alpine | 5432 | 5433 | `pg_isready` |
+| `redis` | redis:7-alpine | 6379 | 6379 | `redis-cli ping` |
+| `backend` | build `./backend` | 3001 | 3001 | `GET /health` |
+| `frontend` | build `./frontend` | 8080 | 3000 | `GET /healthz` |
+
+`depends_on` respeita healthcheck em cadeia: `db` + `redis` saudáveis → `backend` sobe; `backend` saudável → `frontend` sobe.
+
+### Volumes persistentes
+
+`postgres_data`, `redis_data`, `uploads_data`. `npm stop` (`docker compose down`) **não** os apaga. Nunca use `docker compose down -v` a menos que queira perder o banco.
 
 ---
 
-# Frontend
+## Stack
 
-Em outro terminal:
+**Backend:** Fastify 4 · TypeScript · Prisma 5.22 · PostgreSQL 16 · Redis 7 (ioredis) · Axios · Cheerio · ExcelJS · PDFKit · PapaParse · Zod · Jest
+
+**Frontend:** React 19 · Vite · TypeScript · Tailwind CSS 3 · TanStack Query · Recharts · React Router · Lucide · react-hot-toast
+
+**Infra:** Docker (build multi-stage) · Docker Compose · nginx 1.27
+
+---
+
+## Variáveis de ambiente
+
+Tudo vive no `.env` da raiz, já preenchido com valores de desenvolvimento.
+
+### Aplicação
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `NODE_ENV` | `production` | Ambiente. |
+| `LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error`. |
+| `FRONTEND_PORT` | `3000` | Porta do frontend no host. |
+| `BACKEND_PORT` | `3001` | Porta da API no host. |
+| `CORS_ORIGIN` | `http://localhost:3000` | Origens aceitas, separadas por vírgula. `*` libera tudo. |
+
+### Banco e cache
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `POSTGRES_DB` | `observatorio` | Nome do banco. |
+| `POSTGRES_USER` | `observatorio` | Usuário. |
+| `POSTGRES_PASSWORD` | `observatorio123` | Senha. **Troque em produção.** |
+| `DB_PORT` | `5433` | Porta do Postgres no host (evita conflito com Postgres local). |
+| `REDIS_PORT` | `6379` | Porta do Redis no host. |
+| `REDIS_ENABLED` | `true` | `false` desliga o Redis; a aplicação segue funcionando sem cache. |
+| `RUN_SEED` | `true` | Roda o seed no startup. |
+
+O `DATABASE_URL` e o `REDIS_URL` usados pelo backend são montados pelo próprio `docker-compose.yml` apontando para `db` e `redis` — não precisa defini-los no `.env`.
+
+### Portais da Transparência
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `PORTAL_REQUEST_TIMEOUT_MS` | `30000` | Timeout total por requisição. |
+| `PORTAL_CONNECT_TIMEOUT_MS` | `10000` | Timeout de conexão TCP. |
+| `PORTAL_MAX_RETRIES` | `3` | Tentativas por requisição. |
+| `PORTAL_RETRY_BASE_DELAY_MS` | `1000` | Base do backoff exponencial. |
+| `PORTAL_RETRY_MAX_DELAY_MS` | `15000` | Teto do backoff. |
+| `PORTAL_MAX_CONCURRENCY` | `2` | Requisições simultâneas por host. |
+| `PORTAL_MIN_INTERVAL_MS` | `1000` | Intervalo mínimo entre requisições ao mesmo host. |
+| `PORTAL_CACHE_ENABLED` | `true` | Cache das respostas no Redis. |
+| `PORTAL_CACHE_TTL_SECONDS` | `3600` | TTL do cache. |
+
+### Coleta
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `COLLECTION_CONCURRENCY` | `2` | Coletas processadas em paralelo. |
+| `COLLECTION_POLL_INTERVAL_MS` | `5000` | Intervalo do poll de recuperação. |
+| `COLLECTION_WORKER_ENABLED` | `true` | `false` desliga o worker (útil para escalar API e worker separados). |
+
+---
+
+## Cliente HTTP dos Portais
+
+Os Portais da Transparência são lentos e instáveis, então todo acesso externo passa por um cliente único (`backend/src/lib/portal/portal-http-client.ts`):
+
+- **Timeout obrigatório** — 30s por requisição, 10s para conectar. Nunca infinito.
+- **Retry só para erro transitório** — HTTP 408, 429, 500, 502, 503, 504 e os erros de rede `ECONNRESET`, `ETIMEDOUT`, `ECONNREFUSED`, `EAI_AGAIN`, `ENOTFOUND`. Erro 4xx de cliente não é repetido.
+- **Backoff exponencial com jitter** — 1s → 2s → 4s, limitado a 15s; respeita o header `Retry-After`.
+- **Limite de concorrência por host** — no máximo 2 requisições simultâneas, com intervalo mínimo de 1s entre elas.
+- **Cancelamento** — `AbortSignal` propagado; cancelar uma coleta aborta as requisições em voo.
+- **Teto de resposta** — 20MB, para um portal que devolve um dump gigante não estourar a memória.
+- **Erros classificados** — `DNS_ERROR`, `CONNECTION_REFUSED`, `CONNECTION_RESET`, `TIMEOUT`, `TLS_ERROR`, `HTTP_4XX`, `HTTP_5XX`, `INVALID_RESPONSE`. O frontend mostra "portal fora do ar (HTTP 503)", não "Network Error".
+
+### Log
+
+Uma linha por requisição, com `portal`, `endpoint`, `status`, `duration`, `attempt`, `error` e `correlationId`. Cabeçalhos sensíveis (`authorization`, `cookie`, `set-cookie`, `x-api-key`, `token`, `password`) são filtrados e nunca chegam ao log.
+
+```
+[PORTAL] portal=PortoDaFolha endpoint=/portal/licitacoes status=200 duration=2840ms attempt=1 bytes=48219 correlationId=8f3a...
+[PORTAL_ERROR] portal=PortoDaFolha endpoint=/portal/licitacoes error=TIMEOUT status=- duration=30012ms attempt=3 correlationId=8f3a...
+```
+
+### Coleta assíncrona
+
+`POST /api/collections` cria o job e responde **201 imediatamente**. Nenhuma requisição de usuário fica presa esperando um portal. O `CollectionWorker` processa em background com claim atômico `pending → running`, então duas réplicas nunca coletam o mesmo job. O poll periódico existe como rede de segurança para jobs órfãos após um restart.
+
+---
+
+## API REST
+
+Base: `http://localhost:3001`
+
+### Health e diagnóstico
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/health` | Liveness + estado de Postgres e Redis. 503 se o banco estiver fora. |
+| GET | `/health/live` | Só o processo está de pé. Não toca em dependência. |
+| GET | `/health/ready` | Pronto para tráfego (exige Postgres). |
+| GET | `/api/diagnostics/portals/metrics` | Contagens, média, p95 e p99 das chamadas aos portais. |
+| POST | `/api/diagnostics/portals/probe` | Testa uma URL, medindo DNS / TCP / TLS / HTTP separadamente. |
+| POST | `/api/diagnostics/municipalities/:id/probe` | O mesmo, para o portal de um município cadastrado. |
 
 ```bash
-cd frontend
-npm install
-npm run dev
+curl -X POST http://localhost:3001/api/diagnostics/portals/probe \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://portodafolha.se.gov.br/portal/licitacoes"}'
 ```
 
-Frontend:
+### Recursos
 
-```text
-http://localhost:3000
-```
+| Prefixo | Descrição |
+|---|---|
+| `/api/municipalities` | Municípios, estatísticas por município. |
+| `/api/procurements` | Licitações. |
+| `/api/contracts` | Contratos e aditivos. |
+| `/api/suppliers` | Fornecedores. |
+| `/api/payments` | Pagamentos. |
+| `/api/collections` | Jobs de coleta e seus logs. |
+| `/api/analytics` | Execução das regras e indicadores. |
+| `/api/findings` | Indicadores gerados. |
+| `/api/imports` | Importação de planilhas XLSX/CSV. |
+| `/api/exports` | Exportação em XLSX, CSV e PDF. |
+| `/api/logs` | Log do sistema. |
 
-Durante o desenvolvimento, o frontend utiliza a API do backend em:
-
-```text
-http://localhost:3001
-```
+Toda resposta de erro tem o formato `{ error, message }`, com código estável em `error`.
 
 ---
 
-# Testes
+## Modelo de dados
 
-Executar testes:
+```
+Municipality
+  ├── Source[]              fontes coletadas
+  ├── Collection[]          jobs de coleta
+  │     └── CollectionLog[] log de cada coleta
+  ├── Procurement[]         licitações
+  │     └── ProcurementSupplier[]
+  ├── Contract[]            contratos
+  │     ├── ContractAmendment[]
+  │     └── Payment[]
+  ├── Supplier[]
+  ├── Payment[]
+  ├── Expense[]
+  ├── DataImport[]
+  └── AnalysisFinding[]     indicadores
 
-```bash
-cd backend
-npm test
+SystemLog                   log global
 ```
 
-Com coverage:
-
-```bash
-npm test -- --coverage
-```
+Schema em `backend/prisma/schema.prisma`. Migrations em `backend/prisma/migrations/`.
 
 ---
 
-# Arquitetura
+## Regras de análise
 
-```text
-observatorio-gastos-publicos/
-│
-├── backend/
-│   ├── src/
-│   │   ├── main.ts
-│   │   ├── database/
-│   │   │   └── seed.ts
-│   │   ├── adapters/
-│   │   │   ├── porto-da-folha/
-│   │   │   └── generic/
-│   │   └── modules/
-│   │       ├── analytics/
-│   │       ├── collections/
-│   │       ├── exports/
-│   │       ├── imports/
-│   │       ├── municipalities/
-│   │       ├── procurements/
-│   │       ├── contracts/
-│   │       ├── suppliers/
-│   │       ├── payments/
-│   │       └── findings/
-│   │
-│   └── prisma/
-│       ├── schema.prisma
-│       └── migrations/
-│
-├── frontend/
-│   └── src/
-│       ├── pages/
-│       ├── components/
-│       ├── services/
-│       └── types/
-│
-├── Dockerfile
-├── docker-compose.yml
-├── docker-entrypoint.sh
-├── .env.example
-├── ARCHITECTURE.md
-├── ANALYSIS-RULES.md
-└── DATA-SOURCES.md
-```
+> Nenhuma regra afirma irregularidade, fraude ou ilegalidade. Cada uma identifica **situações que merecem análise documental** por profissional habilitado. As classificações são: **Informativo**, **Atenção**, **Requer Análise**, **Alta Relevância** — nunca "Crime", "Fraude" ou "Corrupção".
 
----
+| ID | Tipo | O que verifica | Limites / classificação |
+|---|---|---|---|
+| R01 | `supplier_concentration` | Fornecedor concentrando % do valor total contratado. `valor_fornecedor / valor_total × 100` | ≥25% Atenção · ≥35% Requer Análise · ≥50% Alta Relevância |
+| R02 | `excessive_amendments` | Contratos com muitos aditivos ou aumento de valor. `(atual − inicial) / inicial × 100` | >25% ou ≥3 aditivos Atenção · >30% ou ≥3 Requer Análise · >50% ou ≥5 Alta Relevância |
+| R03 | `inexigibilidade_panel` | Processos por inexigibilidade. Modalidade **legal** quando a competição é inviável — painel apenas informativo. | ≥3 processos ou >R$ 50.000 · sempre Informativo |
+| R04 | `dispensa_frequency` | Quantidade e valor de dispensas. | ≥5 Atenção · ≥10 Requer Análise |
+| R05 | `similar_dispensas` | Dispensas com objetos de natureza semelhante, por palavra-chave (combustível, limpeza, manutenção, veículo, medicamento, material escolar). | ≥2 com mesma palavra-chave · Atenção |
+| R06 | `expired_contracts` | Contratos com `endDate` no passado e status ≠ `expired`. | Atenção |
+| R07 | `near_expiry_contracts` | Contratos ativos vencendo em 30 dias. | Informativo |
+| R08 | `data_quality` | Licitações homologadas com valor 0, contratos sem fornecedor, processos sem objeto. | Sempre Informativo |
+| R09 | `repeated_procurements` | Contratações recorrentes com objetos semelhantes. | Sempre Informativo |
+| R10 | `recurring_supplier` | Fornecedores com ≥3 contratos no mesmo município. | Informativo |
 
-# API REST
+R05 nunca diz "fracionamento ilegal" — o texto gerado é "Recomenda-se verificar se os processos são independentes".
 
-| Método | Endpoint                         | Descrição                     |
-| ------ | -------------------------------- | ----------------------------- |
-| GET    | `/api/municipalities`            | Lista municípios              |
-| POST   | `/api/municipalities`            | Cadastra município            |
-| POST   | `/api/municipalities/:id/detect` | Detecta capacidades do portal |
-| GET    | `/api/procurements`              | Lista licitações              |
-| GET    | `/api/contracts`                 | Lista contratos               |
-| GET    | `/api/suppliers`                 | Lista fornecedores            |
-| GET    | `/api/payments`                  | Lista pagamentos              |
-| GET    | `/api/findings`                  | Lista indicadores             |
-| GET    | `/api/analytics/overview`        | Visão geral                   |
-| GET    | `/api/analytics/suppliers`       | Ranking de fornecedores       |
-| GET    | `/api/analytics/contracts`       | Análise de contratos          |
-| GET    | `/api/analytics/compare`         | Comparação entre municípios   |
-| POST   | `/api/analytics/run`             | Executa análise               |
-| POST   | `/api/collections`               | Inicia coleta                 |
-| GET    | `/api/collections/:id`           | Status da coleta              |
-| POST   | `/api/imports/preview`           | Preview de planilha           |
-| POST   | `/api/imports`                   | Importa planilha              |
-| GET    | `/api/exports/procurements/xlsx` | Exporta licitações em XLSX    |
-| GET    | `/api/exports/procurements/csv`  | Exporta licitações em CSV     |
-| GET    | `/api/exports/report/pdf`        | Gera relatório PDF            |
-| GET    | `/api/exports/suppliers/xlsx`    | Exporta fornecedores          |
-| GET    | `/health`                        | Health check                  |
+### Formato de um indicador
 
----
-
-# Adapters de Portal
-
-O sistema utiliza o padrão `PortalAdapter` para permitir integração com diferentes Portais da Transparência.
-
-```typescript
-interface PortalAdapter {
-  name: string;
-  canHandle(url: string): boolean;
-
-  discover(): Promise<PortalCapabilities>;
-
-  collectProcurements(
-    municipality,
-    options
-  ): Promise<ProcurementData[]>;
-
-  collectContracts(
-    municipality,
-    options
-  ): Promise<ContractData[]>;
-
-  collectPayments(
-    municipality,
-    options
-  ): Promise<PaymentData[]>;
+```json
+{
+  "id": "uuid",
+  "municipalityId": "uuid",
+  "type": "supplier_concentration",
+  "severity": "requires_analysis",
+  "title": "Alta concentração de contratos - Empresa XYZ",
+  "description": "Descrição com dados e contextualização",
+  "rule": "SUPPLIER_CONCENTRATION_GT25PCT",
+  "evidence": {
+    "supplierName": "Empresa XYZ",
+    "supplierDocument": "12.345.678/0001-90",
+    "contractCount": 17,
+    "supplierValue": 2450000,
+    "totalValue": 7163742,
+    "percentage": "34.2",
+    "methodology": "Soma dos valores atuais de contratos ativos por fornecedor / valor total contratado"
+  },
+  "sourceUrl": "https://portodafolha.se.gov.br/portal/licitacoes",
+  "collectedAt": "2026-09-21T00:00:00Z",
+  "dismissed": false
 }
 ```
 
-## Adapters disponíveis
-
-| Adapter                   | Portal                   | Status                     |
-| ------------------------- | ------------------------ | -------------------------- |
-| `PortoDaFolhaAdapter`     | `portodafolha.se.gov.br` | Implementado               |
-| `GenericMunicipalAdapter` | Portais genéricos        | Fallback/importação manual |
-
-Para adicionar suporte a um novo portal, consulte:
-
-```text
-ARCHITECTURE.md
-```
+Execução: `POST /api/analytics/run` com `{ municipalityId }`. Cada execução substitui os indicadores não arquivados do município.
 
 ---
 
-# Regras de análise
+## Fontes de dados
 
-As regras utilizadas para geração dos indicadores estão documentadas em:
+### Porto da Folha / SE
 
-```text
-ANALYSIS-RULES.md
+| Campo | Valor |
+|---|---|
+| Código IBGE | 2805604 |
+| Portal | https://portodafolha.se.gov.br/portal/licitacoes |
+| Adapter | `PortoDaFolhaAdapter` |
+| Coleta | Scraping HTML via parâmetros GET |
+| Rate limit | 1 req/s |
+
+Parâmetros: `filtrar=buscar`, `origem` (órgão), `ano`, `mes`, `modalidade`, `situacao`, `palavra`.
+
+Campos coletados: número do processo, modalidade, órgão, objeto, data de publicação, situação, URL da fonte.
+
+Limitações conhecidas: o portal pode devolver 403 para acesso automatizado sem cookie de sessão; valores monetários nem sempre aparecem na listagem; não há API pública identificada.
+
+### Adicionando uma nova fonte
+
+**1.** Crie o adapter em `backend/src/adapters/`, implementando `PortalAdapter`:
+
+```typescript
+export class MeuMunicipioAdapter implements PortalAdapter {
+  name = 'MeuMunicipioAdapter';
+
+  canHandle(url: string): boolean {
+    return url.includes('meumunicipio.gov.br');
+  }
+
+  async discover(): Promise<PortalCapabilities> {
+    return {
+      type: 'api_json',
+      hasApi: true,
+      hasScraping: false,
+      hasExport: false,
+      exportFormats: [],
+      endpoints: [{ type: 'procurements', url: 'https://meumunicipio.gov.br/api/licitacoes' }],
+      rateLimit: { requestsPerSecond: 2, delayMs: 500 },
+    };
+  }
+
+  async collectProcurements(municipality, options) {
+    const res = await portalHttp.request({
+      portal: this.name,
+      url: 'https://meumunicipio.gov.br/api/licitacoes',
+      params: { ano: options.year },
+      correlationId: options.correlationId,
+      signal: options.signal,
+    });
+    return JSON.parse(res.data).map(this.mapToProcurement);
+  }
+
+  async collectContracts() { return []; }
+  async collectPayments() { return []; }
+}
 ```
 
-Os resultados devem ser interpretados como **indicadores para investigação e análise**, e não como conclusões automáticas sobre irregularidades.
+Use sempre `portalHttp` — é o que dá timeout, retry, limite de concorrência e log.
+
+**2.** Registre em `CollectionWorker.selectAdapter()`:
+
+```typescript
+if (url.includes('meumunicipio.gov.br')) return new MeuMunicipioAdapter();
+```
+
+**3.** Cadastre o município (interface ou API):
+
+```bash
+curl -X POST http://localhost:3001/api/municipalities \
+  -H 'Content-Type: application/json' \
+  -d '{"state":"SE","city":"Meu Município","ibgeCode":"2800000","transparencyPortalUrl":"https://meumunicipio.gov.br/portal"}'
+```
+
+**4.** Dispare a coleta:
+
+```bash
+curl -X POST http://localhost:3001/api/collections \
+  -H 'Content-Type: application/json' \
+  -d '{"municipalityId":"<id>","year":2026,"months":[1,2,3,4,5,6,7]}'
+```
+
+### Importação por planilha
+
+Para municípios sem adapter: **Importações** no menu → selecione município e tipo de dado → upload `.xlsx` ou `.csv` → o sistema detecta as colunas e sugere o mapeamento.
+
+Aliases reconhecidos automaticamente:
+
+| Campo | Aliases |
+|---|---|
+| `processNumber` | numero_processo, num_processo, numero, nr_processo |
+| `object` | objeto, descricao, description, objeto_licitacao |
+| `modality` | modalidade, tipo_licitacao, tipo |
+| `estimatedValue` | valor_estimado, valor_previsto, vl_estimado |
+| `awardedValue` | valor_homologado, valor_adjudicado, valor_contratado |
+| `publicationDate` | data_publicacao, data_abertura, dt_publicacao |
+| `status` | situacao, status, situacao_licitacao |
+| `organ` | orgao, secretaria, unidade, setor |
+| `supplierName` | fornecedor, empresa, razao_social, contratado |
+| `supplierDocument` | cnpj, cpf, documento |
 
 ---
 
-# Fontes de dados
+## Deploy via SSH
 
-As fontes utilizadas pelo projeto e suas respectivas limitações estão documentadas em:
-
-```text
-DATA-SOURCES.md
+```bash
+ssh usuario@servidor
+git clone <repo> observatorio-gastos-publicos
+cd observatorio-gastos-publicos
+cp .env.example .env
 ```
 
-Sempre que possível, os dados processados devem manter referência à fonte original.
-
----
-
-# Estrutura de configuração
-
-O arquivo:
-
-```text
-.env
-```
-
-não deve ser versionado.
-
-Utilize:
-
-```text
-.env.example
-```
-
-como referência.
-
-Exemplo:
+Edite o `.env` para produção:
 
 ```env
-POSTGRES_DB=observatorio
-POSTGRES_USER=observatorio
-POSTGRES_PASSWORD=observatorio123
-
-DB_PORT=5433
-APP_PORT=3000
+POSTGRES_PASSWORD=<senha-forte>
+CORS_ORIGIN=https://seudominio.com.br
+LOG_LEVEL=info
 ```
 
-Em produção, utilize credenciais fortes e não mantenha senhas padrão.
+Suba:
+
+```bash
+npm start
+npm run doctor
+```
+
+Atualização:
+
+```bash
+git pull
+npm start          # rebuild incremental + migrations
+npm run logs:backend
+```
+
+Se o build precisar ser do zero: `npm run rebuild`.
+
+### Backup
+
+```bash
+docker compose exec db pg_dump -U observatorio observatorio > backup-$(date +%F).sql
+```
+
+Restauração:
+
+```bash
+cat backup-2026-09-23.sql | docker compose exec -T db psql -U observatorio -d observatorio
+```
 
 ---
 
-# Segurança
+## Diagnóstico
 
-Para ambientes de produção:
+Antes de qualquer coisa, `npm run doctor`. Ele cobre DNS, TCP, Postgres e Redis de dentro do backend.
 
-* Não exponha diretamente o PostgreSQL para a Internet.
-* Utilize credenciais fortes.
-* Restrinja o acesso SSH por firewall.
-* Prefira autenticação SSH por chave.
-* Evite login SSH com senha quando possível.
-* Não versione `.env`.
-* Faça backups periódicos do PostgreSQL.
-* Utilize HTTPS através de um reverse proxy.
-* Não utilize `docker compose down -v` sem confirmar a necessidade.
-* Não execute comandos destrutivos de banco automaticamente.
-* Revise os dados antes de publicar relatórios.
+### Backend reiniciando
+
+```bash
+npm run logs:backend
+```
+
+O entrypoint não engole mais erro nenhum. As causas prováveis aparecem nomeadas:
+
+- `DATABASE_URL aponta para localhost dentro do container` — dentro do Docker o host é `db`. O entrypoint aborta de propósito.
+- `prisma migrate deploy falhou` — a migration é inválida ou conflita com o banco. **Não existe fallback para `db push --accept-data-loss`**; o container morre para você ver o erro em vez de perder dados em silêncio.
+- `PostgreSQL não respondeu em db:5432 após 60s` — o Postgres não ficou saudável.
+
+### Conectividade entre containers
+
+```bash
+docker compose exec backend getent hosts db      # resolve o nome
+docker compose exec backend nc -zv db 5432       # abre a porta
+docker compose exec backend getent hosts redis
+docker compose exec backend nc -zv redis 6379
+docker compose exec db pg_isready -U observatorio -d observatorio
+docker compose exec redis redis-cli ping
+```
+
+`getent` falhando significa que os containers não estão na mesma rede — confira se todos declaram `networks: [observatorio]`.
+
+### Health
+
+```bash
+curl http://localhost:3001/health      # API direta
+curl http://localhost:3000/            # SPA
+curl http://localhost:3000/api/municipalities   # SPA → proxy → API
+```
+
+Se `localhost:3001/health` responde mas `localhost:3000/api/...` não, o problema está no proxy do nginx — veja `npm run logs:frontend`.
+
+### Portal lento ou fora do ar
+
+```bash
+curl http://localhost:3001/api/diagnostics/portals/metrics
+```
+
+Isolando a fase que falha (DNS, TCP, TLS ou HTTP):
+
+```bash
+curl -X POST http://localhost:3001/api/diagnostics/portals/probe \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://portodafolha.se.gov.br/portal/licitacoes"}'
+```
+
+Uma coleta que falha registra o motivo classificado em `CollectionLog` e em `SystemLog` com o `correlationId`, que liga o job a todas as linhas `[PORTAL]` correspondentes.
+
+### Prisma / OpenSSL
+
+```bash
+docker compose exec backend npx prisma migrate status
+docker compose exec backend openssl version
+```
+
+O `prisma generate` roda no build, não em runtime. Se o client parecer defasado, o caminho é `npm run rebuild`.
 
 ---
 
-# Licença
+## Segurança e limites
 
-Este projeto é open-source.
+- Nenhum token, senha ou cookie é registrado em log.
+- O sistema **não** afirma irregularidade. Todo indicador é um apontamento para análise documental por profissional habilitado.
+- Os dados vêm dos Portais da Transparência como publicados. Inconsistência na fonte aparece como indicador de qualidade de dados (R08), não é corrigida silenciosamente.
+- `CORS_ORIGIN=*` é aceitável em desenvolvimento; em produção defina o domínio. O backend emite um aviso no log se subir com `*` em `NODE_ENV=production`.
+- Troque `POSTGRES_PASSWORD` antes de expor o serviço.
 
-Consulte o arquivo `LICENSE` para os termos completos de utilização.
+---
+
+## Estrutura
+
+```
+.
+├── docker-compose.yml          4 serviços, healthchecks, rede observatorio
+├── .env.example                configuração completa e pronta
+├── package.json                todos os comandos (npm start e cia.)
+├── backend/
+│   ├── Dockerfile              multi-stage, OpenSSL, prisma generate no build
+│   ├── docker-entrypoint.sh    espera deps, migrate deploy, seed, exec
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   └── migrations/
+│   └── src/
+│       ├── main.ts             Fastify em 0.0.0.0:3001, CORS, error handler
+│       ├── config/env.ts       leitura e validação das variáveis
+│       ├── lib/
+│       │   ├── redis.ts        conexão degradável
+│       │   └── portal/         http client, erros, métricas, diagnóstico
+│       ├── adapters/           PortalAdapter e implementações
+│       ├── database/           prisma client e seed
+│       └── modules/            health, diagnostics e recursos da API
+└── frontend/
+    ├── Dockerfile              build Vite → nginx
+    ├── nginx.conf              SPA + proxy /api → backend:3001
+    └── src/                    React, páginas, services/api.ts
+```
+
+---
+
+## Licença
+
+MIT.

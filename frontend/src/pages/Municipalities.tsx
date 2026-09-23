@@ -56,7 +56,7 @@ export function Municipalities() {
         }
       />
 
-      {/* Search */}
+      {}
       <div className="relative max-w-xs">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input value={search} onChange={(e) => setSearch(e.target.value)}
@@ -120,7 +120,7 @@ export function Municipalities() {
         </div>
       )}
 
-      {/* Create Modal */}
+      {}
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Adicionar Município">
         <form onSubmit={(e) => { e.preventDefault(); createMut.mutate(form); }} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">

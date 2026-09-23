@@ -1,11 +1,8 @@
 import { FastifyInstance } from 'fastify';
 import { prisma } from '../../database/prisma';
-import { CollectionQueue } from './collection.queue';
-
-const queue = new CollectionQueue();
+import { collectionQueue } from './collection.queue';
 
 export async function collectionsRoutes(app: FastifyInstance) {
-  // Create a new collection job
   app.post('/', async (req, reply) => {
     const { municipalityId, year, months } = req.body as {
       municipalityId: string;
@@ -32,8 +29,7 @@ export async function collectionsRoutes(app: FastifyInstance) {
       },
     });
 
-    // Add to queue
-    queue.add(collection.id);
+    collectionQueue.add(collection.id);
 
     await prisma.systemLog.create({
       data: {
@@ -47,7 +43,6 @@ export async function collectionsRoutes(app: FastifyInstance) {
     return reply.status(201).send(collection);
   });
 
-  // List collections
   app.get('/', async (req, reply) => {
     const { municipalityId, status, page = '1', limit = '20' } = req.query as Record<string, string>;
 
@@ -78,7 +73,6 @@ export async function collectionsRoutes(app: FastifyInstance) {
     return reply.send({ items, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) });
   });
 
-  // Get single collection with logs
   app.get('/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
 
@@ -94,7 +88,6 @@ export async function collectionsRoutes(app: FastifyInstance) {
     return reply.send(collection);
   });
 
-  // Cancel/delete collection
   app.delete('/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     await prisma.collection.update({

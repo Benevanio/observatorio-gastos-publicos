@@ -60,7 +60,7 @@ export function Findings() {
 
       <Disclaimer />
 
-      {/* Filters */}
+      {}
       <div className="card p-4 flex flex-wrap gap-3">
         <select value={municipalityId} onChange={(e) => { setMunicipalityId(e.target.value); setPage(1); }} className="input w-48">
           <option value="">Todos municípios</option>
@@ -121,7 +121,7 @@ export function Findings() {
       )}
       <Pagination page={page} pages={data?.pages || 1} onChange={setPage} />
 
-      {/* Finding Detail Modal */}
+      {}
       <Modal open={!!selectedFinding} onClose={() => setSelectedFinding(null)} title="Detalhes do Indicador">
         {selectedFinding && (
           <div className="space-y-4">
