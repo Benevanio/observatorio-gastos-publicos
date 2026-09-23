@@ -1,0 +1,280 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Municipality {
+  id                   String   @id @default(uuid())
+  state                String   @db.VarChar(2)
+  city                 String
+  ibgeCode             String?  @unique
+  cnpj                 String?
+  transparencyPortalUrl String?
+  apiUrl               String?
+  enabled              Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  sources              Source[]
+  procurements         Procurement[]
+  contracts            Contract[]
+  payments             Payment[]
+  expenses             Expense[]
+  imports              DataImport[]
+  findings             AnalysisFinding[]
+  collections          Collection[]
+
+  @@map("municipalities")
+}
+
+model Source {
+  id             String   @id @default(uuid())
+  municipalityId String
+  type           String   // api, scraping, csv_export, xlsx_import
+  url            String?
+  collectedAt    DateTime?
+  status         String   @default("pending") // pending, running, success, error
+  metadata       Json?
+  errorMessage   String?
+  createdAt      DateTime @default(now())
+
+  municipality   Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+
+  @@map("sources")
+}
+
+model Procurement {
+  id                String    @id @default(uuid())
+  municipalityId    String
+  processNumber     String?
+  year              Int?
+  month             Int?
+  modality          String?
+  modalityCode      String?
+  organ             String?
+  object            String?
+  publicationDate   DateTime?
+  biddingDate       DateTime?
+  status            String?
+  estimatedValue    Decimal?  @db.Decimal(15, 2)
+  awardedValue      Decimal?  @db.Decimal(15, 2)
+  sourceUrl         String?
+  externalId        String?
+  rawData           Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  municipality      Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+  contracts         Contract[]
+  suppliers         ProcurementSupplier[]
+
+  @@unique([municipalityId, externalId])
+  @@map("procurements")
+}
+
+model Supplier {
+  id          String   @id @default(uuid())
+  name        String
+  document    String?  @unique
+  city        String?
+  state       String?  @db.VarChar(2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  procurements   ProcurementSupplier[]
+  contracts      Contract[]
+  payments       Payment[]
+
+  @@map("suppliers")
+}
+
+model ProcurementSupplier {
+  procurementId String
+  supplierId    String
+  value         Decimal? @db.Decimal(15, 2)
+  winner        Boolean  @default(false)
+
+  procurement   Procurement @relation(fields: [procurementId], references: [id], onDelete: Cascade)
+  supplier      Supplier    @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@id([procurementId, supplierId])
+  @@map("procurement_suppliers")
+}
+
+model Contract {
+  id             String    @id @default(uuid())
+  municipalityId String
+  procurementId  String?
+  contractNumber String?
+  supplierId     String?
+  organ          String?
+  object         String?
+  initialValue   Decimal?  @db.Decimal(15, 2)
+  currentValue   Decimal?  @db.Decimal(15, 2)
+  startDate      DateTime?
+  endDate        DateTime?
+  status         String?   // active, expired, terminated
+  sourceUrl      String?
+  externalId     String?
+  rawData        Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  municipality   Municipality      @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+  procurement    Procurement?      @relation(fields: [procurementId], references: [id])
+  supplier       Supplier?         @relation(fields: [supplierId], references: [id])
+  amendments     ContractAmendment[]
+  payments       Payment[]
+
+  @@unique([municipalityId, externalId])
+  @@map("contracts")
+}
+
+model ContractAmendment {
+  id             String   @id @default(uuid())
+  contractId     String
+  type           String?  // value_increase, value_decrease, term_extension, object_change
+  description    String?
+  originalValue  Decimal? @db.Decimal(15, 2)
+  amendmentValue Decimal? @db.Decimal(15, 2)
+  currentValue   Decimal? @db.Decimal(15, 2)
+  date           DateTime?
+  createdAt      DateTime @default(now())
+
+  contract       Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@map("contract_amendments")
+}
+
+model Payment {
+  id             String   @id @default(uuid())
+  municipalityId String
+  supplierId     String?
+  contractId     String?
+  empenho        String?
+  paymentDate    DateTime?
+  description    String?
+  value          Decimal? @db.Decimal(15, 2)
+  organ          String?
+  externalId     String?
+  rawData        Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  municipality   Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+  supplier       Supplier?    @relation(fields: [supplierId], references: [id])
+  contract       Contract?    @relation(fields: [contractId], references: [id])
+
+  @@unique([municipalityId, externalId])
+  @@map("payments")
+}
+
+model Expense {
+  id             String   @id @default(uuid())
+  municipalityId String
+  category       String?
+  description    String?
+  value          Decimal? @db.Decimal(15, 2)
+  date           DateTime?
+  rawData        Json?
+  createdAt      DateTime @default(now())
+
+  municipality   Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+
+  @@map("expenses")
+}
+
+model DataImport {
+  id             String   @id @default(uuid())
+  municipalityId String
+  source         String?
+  filename       String
+  originalName   String?
+  importedAt     DateTime @default(now())
+  records        Int      @default(0)
+  recordsNew     Int      @default(0)
+  recordsUpdated Int      @default(0)
+  recordsIgnored Int      @default(0)
+  recordsError   Int      @default(0)
+  status         String   @default("pending") // pending, processing, done, error
+  errorMessage   String?
+  columnMapping  Json?
+  entityType     String?  // procurement, contract, payment, supplier
+
+  municipality   Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+
+  @@map("data_imports")
+}
+
+model AnalysisFinding {
+  id             String   @id @default(uuid())
+  municipalityId String
+  type           String   // supplier_concentration, excessive_amendments, repeated_procurement, etc.
+  severity       String   @default("informative") // informative, attention, requires_analysis, high_relevance
+  title          String
+  description    String
+  rule           String?
+  evidence       Json?
+  sourceUrl      String?
+  collectedAt    DateTime?
+  dismissed      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  municipality   Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+
+  @@map("analysis_findings")
+}
+
+model Collection {
+  id             String   @id @default(uuid())
+  municipalityId String
+  year           Int
+  months         Int[]
+  status         String   @default("pending") // pending, running, done, error
+  progress       Int      @default(0)
+  currentStep    String?
+  recordsFound   Int      @default(0)
+  recordsNew     Int      @default(0)
+  recordsUpdated Int      @default(0)
+  recordsIgnored Int      @default(0)
+  recordsError   Int      @default(0)
+  errorMessage   String?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime @default(now())
+  logs           CollectionLog[]
+
+  municipality   Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
+
+  @@map("collections")
+}
+
+model CollectionLog {
+  id           String   @id @default(uuid())
+  collectionId String
+  level        String   @default("info") // info, warn, error
+  message      String
+  data         Json?
+  createdAt    DateTime @default(now())
+
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@map("collection_logs")
+}
+
+model SystemLog {
+  id        String   @id @default(uuid())
+  level     String   @default("info")
+  action    String
+  message   String
+  data      Json?
+  userId    String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@map("system_logs")
+}
